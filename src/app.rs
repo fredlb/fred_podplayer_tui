@@ -125,11 +125,13 @@ impl App {
         self.navigation_stack = NavigationStack::Main;
     }
 
-    pub fn play_episode_under_cursor(&mut self) {
+    // TODO: Play or downlaod? Play if downloaded?
+    // FIXME: Chain these if lets somehow with ? operator?
+    pub fn download_episode_under_cursor(&mut self) {
         if let Some(data) = self.episodes.clone() {
             if let Some(index) = data.state.selected() {
                 if let Some(enc) = &data.items[index].enclosure {
-                    self.dispatch(IoEvent::GetEpisode(enc.url.clone()));
+                    self.dispatch(IoEvent::DownloadEpisode(enc.url.clone()));
                 }
             }
         }

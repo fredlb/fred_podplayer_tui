@@ -131,7 +131,7 @@ async fn run_app<B: Backend>(
                     code: KeyCode::Enter,
                 }) => match app.navigation_stack {
                     NavigationStack::Main => app.view_pod_under_cursor(),
-                    NavigationStack::Episodes => app.play_episode_under_cursor(),
+                    NavigationStack::Episodes => app.download_episode_under_cursor(),
                 },
                 _ => {}
             }

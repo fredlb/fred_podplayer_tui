@@ -2,11 +2,22 @@ extern crate rss;
 use crate::app::App;
 
 use std::sync::Arc;
+use std::io::copy;
+use std::io::Write;
+use std::fs::File;
 use tokio::sync::Mutex;
+use error_chain::error_chain;
+
+error_chain! {
+     foreign_links {
+         Io(std::io::Error);
+         HttpRequest(reqwest::Error);
+     }
+}
 
 pub enum IoEvent {
     GetChannel(String),
-    GetEpisode(String),
+    DownloadEpisode(String),
 }
 
 pub struct Network<'a> {
@@ -22,9 +33,9 @@ impl<'a> Network<'a> {
         match io_event {
             IoEvent::GetChannel(url) => {
                 self.get_channel(url).await;
-            },
-            IoEvent::GetEpisode(url) => {
-                self.get_episodes_audio(url).await;
+            }
+            IoEvent::DownloadEpisode(url) => {
+                self.download_episode(url).await;
             }
         }
         let mut app = self.app.lock().await;
@@ -46,17 +57,20 @@ impl<'a> Network<'a> {
         }
     }
 
-    async fn get_episodes_audio(&mut self, url: String) {
-        let result = reqwest::get(url).await;
-        match result {
-            Ok(result) => match result.bytes().await {
-                Ok(result) => {
-                    let mut app = self.app.lock().await;
-                    app.set_episode_audio_data(result.to_vec());
-                }
-                Err(_e) => {}
-            },
-            Err(_e) => {}
-        }
+    async fn download_episode(&mut self, url: String) -> Result<()> {
+        let result = reqwest::get(url).await?;
+        let mut dest = {
+            let fname = result
+                .url()
+                .path_segments()
+                .and_then(|segments| segments.last())
+                .and_then(|name| if name.is_empty() { None } else { Some(name) })
+                .unwrap_or("tmp.bin");
+            let fname = format!("./data/{}", fname);
+            File::create(fname)?
+        };
+        let content = result.bytes().await?;
+        dest.write_all(&content)?;
+        Ok(())
     }
 }
