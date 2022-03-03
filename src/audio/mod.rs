@@ -10,244 +10,116 @@
 // symphonia-play doesn't want to be updated every time those fields change, therefore always fill
 // in the remaining fields with default values.
 
-use std::fs::File;
-use std::io::Write;
-use std::path::Path;
 
 use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_NULL};
-use symphonia::core::errors::{Error, Result};
-use symphonia::core::formats::{Cue, FormatOptions, FormatReader, SeekMode, SeekTo, Track};
-use symphonia::core::io::{MediaSource, MediaSourceStream, ReadOnlySource};
-use symphonia::core::meta::{ColorMode, MetadataOptions, MetadataRevision, Tag, Value, Visual};
-use symphonia::core::probe::{Hint, ProbeResult};
-use symphonia::core::units::{Time, TimeBase};
-
+use symphonia::core::errors::{Error};
+use symphonia::core::formats::{FormatOptions};
+use symphonia::core::io::{MediaSourceStream};
+use symphonia::core::meta::{MetadataOptions};
+use symphonia::core::probe::{Hint};
 
 mod output;
 
-enum PlayStatus {
-    Playing,
-    Paused,
-    Stopped,
-}
+// enum PlayStatus {
+//     Playing,
+//     Paused,
+//     Stopped,
+// }
 
-struct AudioPlayer {
-    filepath: String,
-    status: PlayStatus,
-}
+// struct AudioPlayer {
+//     filepath: String,
+//     status: PlayStatus,
+// }
 
-impl AudioPlayer {
-    pub fn new(filepath: String) -> AudioPlayer {
-        AudioPlayer {
-            filepath,
-            status: PlayStatus::Stopped,
-        }
-    }
+// impl AudioPlayer {
+//     pub fn new(filepath: String) -> AudioPlayer {
+//         AudioPlayer {
+//             filepath,
+//             status: PlayStatus::Stopped,
+//         }
+//     }
 
-    pub fn play_track(&mut self, path: String) {
+//     pub fn play_track(&mut self, path: String) {
 
-    }
+//     }
 
-    pub fn pause(&mut self) {
-        self.status = PlayStatus::Paused;
-    }
-}
+//     pub fn pause(&mut self) {
+//         self.status = PlayStatus::Paused;
+//     }
+// }
 
-pub fn play_episode(path_str: String, seek_time: f64) {
+pub fn play_episode_2(path: String) {
+    // Open the media source.
+    let src = std::fs::File::open(&path).expect("failed to open media");
 
-    // Create a hint to help the format registry guess what format reader is appropriate.
+    // Create the media source stream.
+    let mss = MediaSourceStream::new(Box::new(src), Default::default());
+
+    // Create a probe hint using the file's extension. [Optional]
     let mut hint = Hint::new();
+    hint.with_extension("mp3");
 
-    // If the path string is '-' then read from standard input.
-    let source = if path_str == "-" {
-        Box::new(ReadOnlySource::new(std::io::stdin())) as Box<dyn MediaSource>
-    } else {
-        // Othwerise, get a Path from the path string.
-        let path = Path::new(&path_str);
+    // Use the default options for metadata and format readers.
+    let meta_opts: MetadataOptions = Default::default();
+    let fmt_opts: FormatOptions = Default::default();
 
-        // Provide the file extension as a hint.
-        if let Some(extension) = path.extension() {
-            if let Some(extension_str) = extension.to_str() {
-                hint.with_extension(extension_str);
-            }
-        }
+    // Probe the media source.
+    let probed = symphonia::default::get_probe()
+        .format(&hint, mss, &fmt_opts, &meta_opts)
+        .expect("unsupported format");
 
-        Box::new(File::open(path).unwrap())
-    };
+    // Get the instantiated format reader.
+    let mut format = probed.format;
 
-    // Create the media source stream using the boxed media source from above.
-    let mss = MediaSourceStream::new(source, Default::default());
-
-    // Use the default options for format readers other than for gapless playback.
-    let format_opts = FormatOptions {
-        ..Default::default()
-    };
-
-    // Use the default options for metadata readers.
-    let metadata_opts: MetadataOptions = Default::default();
-
-    // Get the value of the track option, if provided.
-    let track = None;
-
-    // Probe the media source stream for metadata and get the format reader.
-    match symphonia::default::get_probe().format(&hint, mss, &format_opts, &metadata_opts) {
-        Ok(mut probed) => {
-            // Playback mode.
-
-            // Set the decoder options.
-            let decode_opts = DecoderOptions {
-                ..Default::default()
-            };
-
-            // Play it!
-            play(probed.format, track, Some(seek_time), &decode_opts, false);
-        }
-
-        Err(err) => {
-            // The input was not supported by any format reader.
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
-struct PlayTrackOptions {
-    track_id: u32,
-    seek_ts: u64,
-}
-
-fn play(
-    mut reader: Box<dyn FormatReader>,
-    track_num: Option<usize>,
-    seek_time: Option<f64>,
-    decode_opts: &DecoderOptions,
-    no_progress: bool,
-) -> Result<()> {
-    // If the user provided a track number, select that track if it exists, otherwise, select the
-    // first track with a known codec.
-    let track = track_num
-        .and_then(|t| reader.tracks().get(t))
-        .or_else(|| first_supported_track(reader.tracks()));
-
-    let mut track_id = match track {
-        Some(track) => track.id,
-        _ => return Ok(()),
-    };
-
-    // If there is a seek time, seek the reader to the time specified and get the timestamp of the
-    // seeked position. All packets with a timestamp < the seeked position will not be played.
-    //
-    // Note: This is a half-baked approach to seeking! After seeking the reader, packets should be
-    // decoded and *samples* discarded up-to the exact *sample* indicated by required_ts. The
-    // current approach will discard excess samples if seeking to a sample within a packet.
-    let seek_ts = if let Some(time) = seek_time {
-        let seek_to = SeekTo::Time {
-            time: Time::from(time),
-            track_id: Some(track_id),
-        };
-
-        // Attempt the seek. If the seek fails, ignore the error and return a seek timestamp of 0 so
-        // that no samples are trimmed.
-        match reader.seek(SeekMode::Accurate, seek_to) {
-            Ok(seeked_to) => seeked_to.required_ts,
-            Err(Error::ResetRequired) => {
-                track_id = first_supported_track(reader.tracks()).unwrap().id;
-                0
-            }
-            Err(err) => {
-                // Don't give-up on a seek error.
-                0
-            }
-        }
-    } else {
-        // If not seeking, the seek timestamp is 0.
-        0
-    };
-
-    // The audio output device.
-    let mut audio_output = None;
-
-    let mut track_info = PlayTrackOptions { track_id, seek_ts };
-
-    let result = loop {
-        match play_track(
-            &mut reader,
-            &mut audio_output,
-            track_info,
-            decode_opts,
-            no_progress,
-        ) {
-            Err(Error::ResetRequired) => {
-                // The demuxer indicated that a reset is required. This is sometimes seen with
-                // streaming OGG (e.g., Icecast) wherein the entire contents of the container change
-                // (new tracks, codecs, metadata, etc.). Therefore, we must select a new track and
-                // recreate the decoder.
-
-                // Select the first supported track since the user's selected track number might no
-                // longer be valid or make sense.
-                let track_id = first_supported_track(reader.tracks()).unwrap().id;
-                track_info = PlayTrackOptions {
-                    track_id,
-                    seek_ts: 0,
-                };
-            }
-            res => break res,
-        }
-    };
-
-    // Flush the audio output to finish playing back any leftover samples.
-    if let Some(audio_output) = audio_output.as_mut() {
-        audio_output.flush()
-    }
-
-    result
-}
-
-fn play_track(
-    reader: &mut Box<dyn FormatReader>,
-    audio_output: &mut Option<Box<dyn output::AudioOutput>>,
-    play_opts: PlayTrackOptions,
-    decode_opts: &DecoderOptions,
-    no_progress: bool,
-) -> Result<()> {
-    // Get the selected track using the track ID.
-    let track = match reader
+    // Find the first audio track with a known (decodeable) codec.
+    let track = format
         .tracks()
         .iter()
-        .find(|track| track.id == play_opts.track_id)
-    {
-        Some(track) => track,
-        _ => return Ok(()),
-    };
+        .find(|t| t.codec_params.codec != CODEC_TYPE_NULL)
+        .expect("no supported audio tracks");
+
+    // Use the default options for the decoder.
+    let dec_opts: DecoderOptions = Default::default();
 
     // Create a decoder for the track.
-    let mut decoder = symphonia::default::get_codecs().make(&track.codec_params, decode_opts)?;
+    let mut decoder = symphonia::default::get_codecs()
+        .make(&track.codec_params, &dec_opts)
+        .expect("unsupported codec");
 
-    // Get the selected track's timebase and duration.
-    let tb = track.codec_params.time_base;
-    let dur = track
-        .codec_params
-        .n_frames
-        .map(|frames| track.codec_params.start_ts + frames);
+    // Store the track identifier, it will be used to filter packets.
+    let track_id = track.id;
 
-    // Decode and play the packets belonging to the selected track.
-    let result = loop {
-        // Get the next packet from the format reader.
-        let packet = match reader.next_packet() {
+    let mut audio_output = None;
+
+    // The decode loop.
+    loop {
+        // Get the next packet from the media format.
+        let packet = match format.next_packet() {
             Ok(packet) => packet,
-            Err(err) => break Err(err),
+            Err(Error::ResetRequired) => {
+                // The track list has been changed. Re-examine it and create a new set of decoders,
+                // then restart the decode loop. This is an advanced feature and it is not
+                // unreasonable to consider this "the end." As of v0.5.0, the only usage of this is
+                // for chained OGG physical streams.
+                unimplemented!();
+            }
+            Err(err) => {
+                // A unrecoverable error occured, halt decoding.
+                panic!("{}", err);
+            }
         };
 
-        // If the packet does not belong to the selected track, skip it.
-        if packet.track_id() != play_opts.track_id {
-            continue;
+        // Consume any new metadata that has been read since the last packet.
+        while !format.metadata().is_latest() {
+            // Pop the old head of the metadata queue.
+            format.metadata().pop();
+
+            // Consume the new metadata at the head of the metadata queue.
         }
 
-        //Print out new metadata.
-        while !reader.metadata().is_latest() {
-            reader.metadata().pop();
-
-            if let Some(rev) = reader.metadata().current() {
-            }
+        // If the packet does not belong to the selected track, skip over it.
+        if packet.track_id() != track_id {
+            continue;
         }
 
         // Decode the packet into audio samples.
@@ -270,44 +142,22 @@ fn play_track(
                     // TODO: Check the audio spec. and duration hasn't changed.
                 }
 
-                // Write the decoded audio samples to the audio output if the presentation timestamp
-                // for the packet is >= the seeked position (0 if not seeking).
-                if packet.ts() >= play_opts.seek_ts {
-
-                    if let Some(audio_output) = audio_output {
-                        audio_output.write(decoded).unwrap()
-                    }
+                if let Some(audio_output) = &mut audio_output {
+                    audio_output.write(decoded).unwrap()
                 }
             }
-            Err(Error::DecodeError(err)) => {
-                // Decode errors are not fatal. Print the error message and try to decode the next
-                // packet as usual.
+            Err(Error::IoError(_)) => {
+                // The packet failed to decode due to an IO error, skip the packet.
+                continue;
             }
-            Err(err) => break Err(err),
+            Err(Error::DecodeError(_)) => {
+                // The packet failed to decode due to invalid data, skip the packet.
+                continue;
+            }
+            Err(err) => {
+                // An unrecoverable error occured, halt decoding.
+                panic!("{}", err);
+            }
         }
-    };
-
-    // Regardless of result, finalize the decoder to get the verification result.
-    let finalize_result = decoder.finalize();
-
-    if let Some(verify_ok) = finalize_result.verify_ok {
     }
-
-    result
-}
-
-fn first_supported_track(tracks: &[Track]) -> Option<&Track> {
-    tracks
-        .iter()
-        .find(|t| t.codec_params.codec != CODEC_TYPE_NULL)
-}
-
-fn fmt_time(ts: u64, tb: TimeBase) -> String {
-    let time = tb.calc_time(ts);
-
-    let hours = time.seconds / (60 * 60);
-    let mins = (time.seconds % (60 * 60)) / 60;
-    let secs = f64::from((time.seconds % 60) as u32) + time.frac;
-
-    format!("{}:{:0>2}:{:0>6.3}", hours, mins, secs)
 }

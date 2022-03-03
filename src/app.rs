@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use tui::widgets::ListState;
 
 use std::sync::mpsc::Sender;
-use crate::audio::play_episode;
+use crate::audio::play_episode_2;
 
 #[derive(Clone)]
 pub struct StatefulList<T> {
@@ -129,7 +129,7 @@ impl App {
     }
     
     pub fn play_audio(&mut self, path: String) {
-        play_episode(path, 0.0);
+        play_episode_2(path);
     }
 
     // TODO: Play or downlaod? Play if downloaded?
