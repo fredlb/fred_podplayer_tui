@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use tui::widgets::ListState;
 
 use std::sync::mpsc::Sender;
+use crate::audio::play_episode;
 
 #[derive(Clone)]
 pub struct StatefulList<T> {
@@ -71,6 +72,7 @@ pub struct App {
     pub episodes: Option<StatefulList<rss::Item>>,
     io_tx: Option<Sender<IoEvent>>,
     pub is_loading: bool,
+    pub is_downloading: bool,
     pub news_index: usize,
     pub config: Config,
     pub navigation_stack: NavigationStack,
@@ -85,6 +87,7 @@ impl App {
             episodes: None,
             io_tx: Some(io_tx),
             is_loading: false,
+            is_downloading: false,
             news_index: 0,
             navigation_stack: NavigationStack::Main,
             episode_audio_data: None,
@@ -124,6 +127,10 @@ impl App {
         self.news_index = 0;
         self.navigation_stack = NavigationStack::Main;
     }
+    
+    pub fn play_audio(&mut self, path: String) {
+        play_episode(path, 0.0);
+    }
 
     // TODO: Play or downlaod? Play if downloaded?
     // FIXME: Chain these if lets somehow with ? operator?
@@ -131,6 +138,7 @@ impl App {
         if let Some(data) = self.episodes.clone() {
             if let Some(index) = data.state.selected() {
                 if let Some(enc) = &data.items[index].enclosure {
+                    self.is_downloading = true;
                     self.dispatch(IoEvent::DownloadEpisode(enc.url.clone()));
                 }
             }

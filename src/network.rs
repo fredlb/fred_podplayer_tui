@@ -40,6 +40,7 @@ impl<'a> Network<'a> {
         }
         let mut app = self.app.lock().await;
         app.is_loading = false;
+        app.is_downloading = false;
     }
 
     async fn get_channel(&mut self, url: String) {
@@ -59,6 +60,7 @@ impl<'a> Network<'a> {
 
     async fn download_episode(&mut self, url: String) -> Result<()> {
         let result = reqwest::get(url).await?;
+        let filename;
         let mut dest = {
             let fname = result
                 .url()
@@ -67,10 +69,13 @@ impl<'a> Network<'a> {
                 .and_then(|name| if name.is_empty() { None } else { Some(name) })
                 .unwrap_or("tmp.bin");
             let fname = format!("./data/{}", fname);
+            filename = String::from(fname.as_str());
             File::create(fname)?
         };
         let content = result.bytes().await?;
         dest.write_all(&content)?;
+        let mut app = self.app.lock().await;
+        app.play_audio(filename);
         Ok(())
     }
 }

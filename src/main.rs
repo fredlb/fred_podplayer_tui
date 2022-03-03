@@ -1,5 +1,6 @@
 mod app;
 mod network;
+mod audio;
 
 extern crate crossterm;
 extern crate rss;
@@ -195,6 +196,9 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
                 .add_modifier(Modifier::BOLD),
         )
         .highlight_symbol(">> ");
+    
+    let downloading = Block::default().title(Spans::from(format!("downloading: {}", app.is_downloading)));
+    f.render_widget(downloading, main_chunks[1]);
 
     match &app.navigation_stack {
         NavigationStack::Main => {
