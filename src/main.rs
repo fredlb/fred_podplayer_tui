@@ -8,6 +8,7 @@ extern crate serde;
 extern crate tui;
 
 use app::{App, Config, NavigationStack};
+use audio::{AudioPlayer, AudioEvent};
 use crossterm::{
     event::{
         self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
@@ -65,12 +66,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tick_rate = Duration::from_millis(250);
     let (sync_io_tx, sync_io_rx) = std::sync::mpsc::channel::<IoEvent>();
     let app = Arc::new(Mutex::new(App::new(config, sync_io_tx)));
+    let audio_player = AudioPlayer::new();
     let cloned_app = Arc::clone(&app);
     std::thread::spawn(move || {
         let mut network = Network::new(&app);
         start_tokio(sync_io_rx, &mut network);
     });
-    let _res = run_app(&mut terminal, &cloned_app, tick_rate).await?;
+    let _res = run_app(&mut terminal, &cloned_app, &audio_player, tick_rate).await?;
 
     disable_raw_mode()?;
     execute!(
@@ -93,6 +95,7 @@ async fn start_tokio<'a>(io_rx: std::sync::mpsc::Receiver<IoEvent>, network: &mu
 async fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
     app: &Arc<Mutex<App>>,
+    audio_player: &AudioPlayer,
     tick_rate: Duration,
 ) -> io::Result<()> {
     let mut last_tick = Instant::now();
@@ -132,8 +135,12 @@ async fn run_app<B: Backend>(
                     code: KeyCode::Enter,
                 }) => match app.navigation_stack {
                     NavigationStack::Main => app.view_pod_under_cursor(),
-                    NavigationStack::Episodes => app.download_episode_under_cursor(),
+                    NavigationStack::Episodes => app.play_audio(),
                 },
+                Event::Key(KeyEvent {
+                    modifiers: KeyModifiers::NONE,
+                    code: KeyCode::Esc,
+                }) => app.pause_audio(),
                 _ => {}
             }
         }

@@ -74,8 +74,6 @@ impl<'a> Network<'a> {
         };
         let content = result.bytes().await?;
         dest.write_all(&content)?;
-        let mut app = self.app.lock().await;
-        app.play_audio(filename);
         Ok(())
     }
 }
