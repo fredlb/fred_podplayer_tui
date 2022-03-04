@@ -144,7 +144,7 @@ async fn run_app<B: Backend>(
                 Event::Key(KeyEvent {
                     modifiers: KeyModifiers::NONE,
                     code: KeyCode::Esc,
-                }) => app.pause_audio(),
+                }) => app.player.pause(),
                 _ => {}
             }
         }

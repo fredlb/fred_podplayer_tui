@@ -74,7 +74,6 @@ pub struct App {
     io_tx: Option<Sender<IoEvent>>,
     pub is_loading: bool,
     pub is_downloading: bool,
-    pub news_index: usize,
     pub config: Config,
     pub navigation_stack: NavigationStack,
     pub player: Player,
@@ -89,7 +88,6 @@ impl App {
             io_tx: Some(io_tx),
             is_loading: false,
             is_downloading: false,
-            news_index: 0,
             navigation_stack: NavigationStack::Main,
             player,
         }
@@ -121,14 +119,9 @@ impl App {
     }
 
     pub fn back(&mut self) {
-        self.news_index = 0;
         self.navigation_stack = NavigationStack::Main;
     }
     
-    pub fn pause_audio(&mut self) {
-        self.player.pause();
-    }
-
     // TODO: Play or downlaod? Play if downloaded?
     // FIXME: Chain these if lets somehow with ? operator?
     pub fn download_episode_under_cursor(&mut self) {
