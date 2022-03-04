@@ -1,8 +1,8 @@
 extern crate rss;
 use crate::app::App;
+use crate::player::Track;
 
 use std::sync::Arc;
-use std::io::copy;
 use std::io::Write;
 use std::fs::File;
 use tokio::sync::Mutex;
@@ -35,7 +35,7 @@ impl<'a> Network<'a> {
                 self.get_channel(url).await;
             }
             IoEvent::DownloadEpisode(url) => {
-                self.download_episode(url).await;
+                let _ = self.download_episode(url).await;
             }
         }
         let mut app = self.app.lock().await;
@@ -74,6 +74,10 @@ impl<'a> Network<'a> {
         };
         let content = result.bytes().await?;
         dest.write_all(&content)?;
+        let mut app = self.app.lock().await;
+        app.player.stop();
+        app.player.selected_track = Some(Track { filepath: filename });
+        app.player.play();
         Ok(())
     }
 }

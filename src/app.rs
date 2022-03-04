@@ -4,9 +4,10 @@ extern crate tui;
 use crate::network::IoEvent;
 use serde::{Deserialize, Serialize};
 use tui::widgets::ListState;
+use crate::player::Player;
 
 use std::sync::mpsc::Sender;
-use crate::audio::AudioEvent;
+
 
 #[derive(Clone)]
 pub struct StatefulList<T> {
@@ -76,11 +77,11 @@ pub struct App {
     pub news_index: usize,
     pub config: Config,
     pub navigation_stack: NavigationStack,
-    pub episode_audio_data: Option<Vec<u8>>,
+    pub player: Player,
 }
 
 impl App {
-    pub fn new(config: Config, io_tx: Sender<IoEvent>) -> App {
+    pub fn new(config: Config, io_tx: Sender<IoEvent>, player: Player) -> App {
         App {
             config: config.clone(),
             pods: StatefulList::with_items(config.feeds.clone()),
@@ -90,7 +91,7 @@ impl App {
             is_downloading: false,
             news_index: 0,
             navigation_stack: NavigationStack::Main,
-            episode_audio_data: None,
+            player,
         }
     }
 
@@ -112,10 +113,6 @@ impl App {
         self.episodes = Some(StatefulList::with_items(channel.items().to_vec()));
     }
 
-    pub fn set_episode_audio_data(&mut self, data: Vec<u8>) {
-        self.episode_audio_data = Some(data);
-    }
-
     pub fn view_pod_under_cursor(&mut self) {
         self.navigation_stack = NavigationStack::Episodes;
         if let Some(index) = self.pods.state.selected() {
@@ -128,10 +125,8 @@ impl App {
         self.navigation_stack = NavigationStack::Main;
     }
     
-    pub fn play_audio(&mut self) {
-    }
-
     pub fn pause_audio(&mut self) {
+        self.player.pause();
     }
 
     // TODO: Play or downlaod? Play if downloaded?
