@@ -1,10 +1,9 @@
 extern crate rss;
 extern crate tui;
 
-use crate::network::IoEvent;
+use crate::{network::IoEvent, player::Player};
 use serde::{Deserialize, Serialize};
 use tui::widgets::ListState;
-use crate::player::Player;
 
 use std::sync::mpsc::Sender;
 

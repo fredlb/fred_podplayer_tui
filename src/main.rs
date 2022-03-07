@@ -8,7 +8,7 @@ extern crate serde;
 extern crate tui;
 
 use app::{App, Config, NavigationStack};
-use player::Player;
+use player::{Player};
 
 use crossterm::{
     event::{
@@ -64,13 +64,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
-    let sink = rodio::Sink::try_new(&stream_handle).unwrap();
-    let player = Player::new(sink, stream_handle);
+    let player_kira = Player::new();
 
     let tick_rate = Duration::from_millis(250);
     let (sync_io_tx, sync_io_rx) = std::sync::mpsc::channel::<IoEvent>();
-    let app = Arc::new(Mutex::new(App::new(config, sync_io_tx, player)));
+    let app = Arc::new(Mutex::new(App::new(config, sync_io_tx, player_kira)));
 
     let cloned_app = Arc::clone(&app);
     std::thread::spawn(move || {
@@ -105,7 +103,7 @@ async fn run_app<B: Backend>(
     let mut last_tick = Instant::now();
     loop {
         let mut app = app.lock().await;
-        terminal.draw(|mut f| ui(&mut f, &app))?;
+        terminal.draw(|mut f| ui(&mut f, &mut app))?;
 
         let timeout = tick_rate
             .checked_sub(last_tick.elapsed())
@@ -144,7 +142,15 @@ async fn run_app<B: Backend>(
                 Event::Key(KeyEvent {
                     modifiers: KeyModifiers::NONE,
                     code: KeyCode::Esc,
-                }) => app.player.pause(),
+                }) => app.player.toggle_playback(),
+                Event::Key(KeyEvent {
+                    modifiers: KeyModifiers::NONE,
+                    code: KeyCode::Char('o'),
+                }) => app.player.jump_forward_10s(),
+                Event::Key(KeyEvent {
+                    modifiers: KeyModifiers::NONE,
+                    code: KeyCode::Char('i'),
+                }) => app.player.jump_backward_10s(),
                 _ => {}
             }
         }
@@ -154,7 +160,7 @@ async fn run_app<B: Backend>(
     }
 }
 
-fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
+fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(90), Constraint::Percentage(10)].as_ref())
@@ -208,8 +214,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
         )
         .highlight_symbol(">> ");
     
-    let downloading = Block::default().title(Spans::from(format!("downloading: {}", app.is_downloading)));
-    f.render_widget(downloading, main_chunks[1]);
+    let progress = Block::default().title(Spans::from(format!("downloading: {}", &app.player.get_progress())));
+    f.render_widget(progress, main_chunks[1]);
 
     match &app.navigation_stack {
         NavigationStack::Main => {

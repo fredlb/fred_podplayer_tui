@@ -1,83 +1,71 @@
-use rodio;
+use kira::{
+    manager::{backend::cpal::CpalBackend, AudioManager, AudioManagerSettings},
+    sound::{
+        streaming::{StreamingSoundData, StreamingSoundSettings},
+        SoundData, static_sound::PlaybackState,
+    },
+};
 
 pub struct Track {
     pub filepath: String,
 }
 
-pub enum PlayState {
-    Playing,
-    Paused,
-    Stopped,
-    NotStarted,
-}
-
 pub struct Player {
-    pub sink: rodio::Sink,
-    pub stream_handle: rodio::OutputStreamHandle,
+    manager: AudioManager,
     pub selected_track: Option<Track>,
-    pub play_state: PlayState,
+    handler: Option<<StreamingSoundData as SoundData>::Handle>,
 }
 
 impl Player {
-    pub fn new(sink: rodio::Sink, stream_handle: rodio::OutputStreamHandle) -> Player {
+    pub fn new() -> Player {
+        let manager =
+            AudioManager::<CpalBackend>::new(AudioManagerSettings::default()).unwrap();
         Player {
-            sink,
-            stream_handle,
+            manager,
             selected_track: None,
-            play_state: PlayState::NotStarted,
+            handler: None,
         }
     }
 
     pub fn play(&mut self) {
         if let Some(track) = &self.selected_track {
-            let file = std::io::BufReader::new(
-                std::fs::File::open(&track.filepath).expect("Failed to open file"),
-            );
-            let source = rodio::Decoder::new(file).expect("Failed to decode audio file");
-
-            match self.play_state {
-                PlayState::NotStarted | PlayState::Stopped | PlayState::Playing => {
-                    self.play_state = PlayState::Playing;
-
-                    let sink_try = rodio::Sink::try_new(&self.stream_handle);
-
-                    match sink_try {
-                        Ok(sink) => {
-                            self.sink = sink;
-                            self.sink.append(source);
-                        }
-                        Err(_) => (),
-                    }
-                }
-                PlayState::Paused => {
-                    self.play_state = PlayState::Playing;
-                    self.sink.play();
-                }
-            }
+            let sound =
+                StreamingSoundData::from_file(&track.filepath, StreamingSoundSettings::default())
+                    .unwrap();
+            self.handler = Some(self.manager.play(sound).unwrap());
         }
     }
 
-    pub fn pause(&mut self) {
-        match self.play_state {
-            PlayState::Playing => {
-                self.play_state = PlayState::Paused;
-                self.sink.pause();
-            }
-            PlayState::Paused => {
-                self.play_state = PlayState::Playing;
-                self.sink.play();
-            }
-            _ => (),
+    pub fn toggle_playback(&mut self) {
+        if let Some(handler) = &mut self.handler {
+            match handler.state() {
+                PlaybackState::Playing => {
+                    handler.pause(kira::tween::Tween::default()).unwrap()
+                }
+                PlaybackState::Paused | PlaybackState::Pausing => {
+                    handler.resume(kira::tween::Tween::default()).unwrap()
+                }
+                _ => {}
+            };
         }
     }
 
-    pub fn stop(&mut self) {
-        match &self.play_state {
-            PlayState::Playing | PlayState::Paused => {
-                self.play_state = PlayState::Stopped;
-                self.sink.stop();
-            }
-            _ => (),
+    pub fn jump_forward_10s(&mut self) {
+        if let Some(handler) = &mut self.handler {
+            handler.seek_by(5.0).unwrap();
         }
+    }
+
+    pub fn jump_backward_10s(&mut self) {
+        if let Some(handler) = &mut self.handler {
+            handler.seek_by(-5.0).unwrap();
+        }
+    }
+
+    pub fn get_progress(&mut self) -> f64 {
+        if let Some(handler) = &mut self.handler {
+            return handler.position();
+        }
+        return 0.0;
     }
 }
