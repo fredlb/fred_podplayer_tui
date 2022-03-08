@@ -1,6 +1,6 @@
 extern crate rss;
 use crate::app::App;
-use crate::player::Track;
+use crate::player::TrackFile;
 
 use std::sync::Arc;
 use std::io::Write;
@@ -75,7 +75,7 @@ impl<'a> Network<'a> {
         let content = result.bytes().await?;
         dest.write_all(&content)?;
         let mut app = self.app.lock().await;
-        app.player.selected_track = Some(Track { filepath: filename });
+        app.player.selected_track = Some(TrackFile { filepath: filename });
         app.player.play();
         Ok(())
     }
