@@ -4,7 +4,7 @@ use crate::player::TrackFile;
 
 use std::sync::Arc;
 use std::io::Write;
-use std::fs::File;
+use std::fs::{File, create_dir_all};
 use tokio::sync::Mutex;
 use error_chain::error_chain;
 
@@ -73,6 +73,7 @@ impl<'a> Network<'a> {
             File::create(fname)?
         };
         let content = result.bytes().await?;
+        create_dir_all("./data")?;
         dest.write_all(&content)?;
         let mut app = self.app.lock().await;
         app.player.selected_track = Some(TrackFile { filepath: filename, duration: String::from("") });
