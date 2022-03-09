@@ -116,7 +116,7 @@ impl Player {
             let mins = (pos.seconds % (60 * 60)) / 60;
             let secs = (pos.seconds % 60) as u32;
 
-            return format!("{}:{:0>2}:{}", hours, mins, secs);
+            return format!("{}:{:0>2}:{:0>2}", hours, mins, secs);
         }
         return String::from("");
     }
@@ -130,5 +130,5 @@ fn fmt_time(ts: u64, tb: TimeBase) -> String {
     let mins = (time.seconds % (60 * 60)) / 60;
     let secs = (time.seconds % 60) as u32;
 
-    format!("{}:{:0>2}:{}", hours, mins, secs)
+    format!("{}:{:0>2}:{:0>2}", hours, mins, secs)
 }

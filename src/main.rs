@@ -8,7 +8,7 @@ extern crate serde;
 extern crate tui;
 
 use app::{App, Config, NavigationStack};
-use player::{Player};
+use player::Player;
 
 use crossterm::{
     event::{
@@ -30,8 +30,8 @@ use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::Spans,
-    widgets::{Block, Borders, List, ListItem},
+    text::{Span, Spans},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame, Terminal,
 };
 
@@ -213,14 +213,28 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
                 .add_modifier(Modifier::BOLD),
         )
         .highlight_symbol(">> ");
-    
+
     let cur_progress = &app.player.get_progress();
-    let progress_text = match &app.player.selected_track {
-        Some(track) => format!("{} / {}", cur_progress, track.duration),
-        None => String::from(""),
+    // let progress_text = match &app.player.selected_track {
+    //     Some(track) => format!("{} / {}", cur_progress, track.duration),
+    //     None => String::from(""),
+    // };
+    let mut player_spans: Vec<Spans> = Vec::new();
+    match &app.player.selected_track {
+        Some(track) => player_spans.push(Spans::from(Span::from(format!(
+            "{} / {}",
+            cur_progress, track.duration
+        )))),
+        None => {}
     };
-    let progress = Block::default().title(Spans::from(format!("Progress: {}", progress_text)));
-    f.render_widget(progress, main_chunks[1]);
+    if app.is_downloading {
+        player_spans.push(Spans::from(Span::from("Episode is downloading...")));
+    }
+    let player = Paragraph::new(player_spans)
+        .block(Block::default().title("Player").borders(Borders::ALL))
+        .style(Style::default().fg(Color::White).bg(Color::Black));
+
+    f.render_widget(player, main_chunks[1]);
 
     match &app.navigation_stack {
         NavigationStack::Main => {
@@ -228,7 +242,11 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         }
         NavigationStack::Episodes => {
             if let Some(episodes) = &app.episodes {
-                f.render_stateful_widget(episodes_list, main_chunks[0], &mut episodes.state.clone());
+                f.render_stateful_widget(
+                    episodes_list,
+                    main_chunks[0],
+                    &mut episodes.state.clone(),
+                );
             }
         }
     }
