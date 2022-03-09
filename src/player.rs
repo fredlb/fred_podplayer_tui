@@ -66,6 +66,7 @@ impl Player {
             match symphonia::default::get_probe().format(&hint, mss, &format_opts, &metadata_opts) {
                 Ok(mut probed) => {
                     let params = &probed.format.default_track().unwrap().codec_params;
+
                     if let Some(n_frames) = params.n_frames {
                         if let Some(tb) = params.time_base {
                             track.duration = fmt_time(n_frames, tb);
@@ -98,13 +99,13 @@ impl Player {
 
     pub fn jump_forward_10s(&mut self) {
         if let Some(handler) = &mut self.handler {
-            handler.seek_by(5.0).unwrap();
+            handler.seek_by(10.0).unwrap();
         }
     }
 
     pub fn jump_backward_10s(&mut self) {
         if let Some(handler) = &mut self.handler {
-            handler.seek_by(-5.0).unwrap();
+            handler.seek_by(-10.0).unwrap();
         }
     }
 
