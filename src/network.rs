@@ -75,7 +75,7 @@ impl<'a> Network<'a> {
         let content = result.bytes().await?;
         dest.write_all(&content)?;
         let mut app = self.app.lock().await;
-        app.player.selected_track = Some(TrackFile { filepath: filename });
+        app.player.selected_track = Some(TrackFile { filepath: filename, duration: String::from("") });
         app.player.play();
         Ok(())
     }

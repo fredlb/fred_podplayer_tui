@@ -214,7 +214,12 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         )
         .highlight_symbol(">> ");
     
-    let progress = Block::default().title(Spans::from(format!("downloading: {}", &app.player.get_progress())));
+    let cur_progress = &app.player.get_progress();
+    let progress_text = match &app.player.selected_track {
+        Some(track) => format!("{} / {}", cur_progress, track.duration),
+        None => String::from(""),
+    };
+    let progress = Block::default().title(Spans::from(format!("Progress: {}", progress_text)));
     f.render_widget(progress, main_chunks[1]);
 
     match &app.navigation_stack {

@@ -20,6 +20,7 @@ use symphonia::core::units::{Time, TimeBase};
 
 pub struct TrackFile {
     pub filepath: String,
+    pub duration: String,
 }
 
 pub struct Player {
@@ -40,7 +41,7 @@ impl Player {
     }
 
     pub fn play(&mut self) {
-        if let Some(track) = &self.selected_track {
+        if let Some(track) = &mut self.selected_track {
             // Create a hint to help the format registry guess what format reader is appropriate.
             let mut hint = Hint::new();
 
@@ -67,10 +68,7 @@ impl Player {
                     let params = &probed.format.default_track().unwrap().codec_params;
                     if let Some(n_frames) = params.n_frames {
                         if let Some(tb) = params.time_base {
-                            println!(
-                                "|          Duration:        {}",
-                                fmt_time(n_frames, tb)
-                            );
+                            track.duration = fmt_time(n_frames, tb);
                         }
                     }
 
@@ -110,20 +108,26 @@ impl Player {
         }
     }
 
-    pub fn get_progress(&mut self) -> f64 {
+    pub fn get_progress(&mut self) -> String {
         if let Some(handler) = &mut self.handler {
-            return handler.position();
+            let pos = Time::from(handler.position());
+            let hours = pos.seconds / (60 * 60);
+            let mins = (pos.seconds % (60 * 60)) / 60;
+            let secs = (pos.seconds % 60) as u32;
+
+            return format!("{}:{:0>2}:{}", hours, mins, secs);
         }
-        return 0.0;
+        return String::from("");
     }
 }
+
 
 fn fmt_time(ts: u64, tb: TimeBase) -> String {
     let time = tb.calc_time(ts);
 
     let hours = time.seconds / (60 * 60);
     let mins = (time.seconds % (60 * 60)) / 60;
-    let secs = f64::from((time.seconds % 60) as u32) + time.frac;
+    let secs = (time.seconds % 60) as u32;
 
-    format!("{}:{:0>2}:{:0>6.3}", hours, mins, secs)
+    format!("{}:{:0>2}:{}", hours, mins, secs)
 }
