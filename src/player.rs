@@ -1,21 +1,19 @@
 use kira::{
     manager::{backend::cpal::CpalBackend, AudioManager, AudioManagerSettings},
     sound::{
+        static_sound::PlaybackState,
         streaming::{StreamingSoundData, StreamingSoundSettings},
-        SoundData, static_sound::PlaybackState,
+        SoundData,
     },
 };
 
 use std::fs::File;
-use std::io::Write;
 use std::path::Path;
 
-use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_NULL};
-use symphonia::core::errors::{Error, Result};
-use symphonia::core::formats::{Cue, FormatOptions, FormatReader, SeekMode, SeekTo, Track};
-use symphonia::core::io::{MediaSource, MediaSourceStream, ReadOnlySource};
-use symphonia::core::meta::{ColorMode, MetadataOptions, MetadataRevision, Tag, Value, Visual};
-use symphonia::core::probe::{Hint, ProbeResult};
+use symphonia::core::formats::FormatOptions;
+use symphonia::core::io::MediaSourceStream;
+use symphonia::core::meta::MetadataOptions;
+use symphonia::core::probe::Hint;
 use symphonia::core::units::{Time, TimeBase};
 
 pub struct TrackFile {
@@ -31,8 +29,7 @@ pub struct Player {
 
 impl Player {
     pub fn new() -> Player {
-        let manager =
-            AudioManager::<CpalBackend>::new(AudioManagerSettings::default()).unwrap();
+        let manager = AudioManager::<CpalBackend>::new(AudioManagerSettings::default()).unwrap();
         Player {
             manager,
             selected_track: None,
@@ -61,10 +58,12 @@ impl Player {
             };
             let mss = MediaSourceStream::new(source, Default::default());
             let metadata_opts: MetadataOptions = Default::default();
-            let format_opts =
-                FormatOptions { enable_gapless: false, ..Default::default() };
+            let format_opts = FormatOptions {
+                enable_gapless: false,
+                ..Default::default()
+            };
             match symphonia::default::get_probe().format(&hint, mss, &format_opts, &metadata_opts) {
-                Ok(mut probed) => {
+                Ok(probed) => {
                     let params = &probed.format.default_track().unwrap().codec_params;
 
                     if let Some(n_frames) = params.n_frames {
@@ -72,9 +71,8 @@ impl Player {
                             track.duration = fmt_time(n_frames, tb);
                         }
                     }
-
                 }
-                Err(err) => println!("lol"),
+                Err(_) => panic!("could not probe audio for metadata"),
             }
             let sound =
                 StreamingSoundData::from_file(&track.filepath, StreamingSoundSettings::default())
@@ -86,9 +84,7 @@ impl Player {
     pub fn toggle_playback(&mut self) {
         if let Some(handler) = &mut self.handler {
             match handler.state() {
-                PlaybackState::Playing => {
-                    handler.pause(kira::tween::Tween::default()).unwrap()
-                }
+                PlaybackState::Playing => handler.pause(kira::tween::Tween::default()).unwrap(),
                 PlaybackState::Paused | PlaybackState::Pausing => {
                     handler.resume(kira::tween::Tween::default()).unwrap()
                 }
@@ -121,7 +117,6 @@ impl Player {
         return String::from("");
     }
 }
-
 
 fn fmt_time(ts: u64, tb: TimeBase) -> String {
     let time = tb.calc_time(ts);

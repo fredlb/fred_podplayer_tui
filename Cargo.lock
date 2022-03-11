@@ -801,6 +801,8 @@ dependencies = [
 [[package]]
 name = "kira"
 version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "169054ea926c0b14f825d9ce51b8648452144bfd8f8f232b3400f18ca1c9b6e0"
 dependencies = [
  "atomic-arena",
  "cpal",

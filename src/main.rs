@@ -12,7 +12,7 @@ mod player;
 mod db;
 
 
-use app::{App, Config, NavigationStack};
+use app::{App, NavigationStack};
 use db::{establish_connection, get_pods};
 use player::Player;
 
@@ -26,9 +26,8 @@ use crossterm::{
 use network::{IoEvent, Network};
 
 use std::{
-    fs, io,
+    io,
     sync::Arc,
-    thread,
     time::{Duration, Instant},
 };
 use tokio::sync::Mutex;
@@ -49,35 +48,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let config_file =
-        fs::read_to_string("./config.json").expect("Something went wrong reading config file");
-
-    let config: Config;
-    match serde_json::from_str(&config_file) {
-        Ok(conf) => config = conf,
-        Err(e) => {
-            println!("{}", e);
-            thread::sleep(Duration::from_secs(5));
-            // restore terminal
-            disable_raw_mode()?;
-            execute!(
-                terminal.backend_mut(),
-                LeaveAlternateScreen,
-                DisableMouseCapture
-            )?;
-            terminal.show_cursor()?;
-            return Ok(());
-        }
-    }
-
     let connection = establish_connection();
     let pods = get_pods(&connection);
 
-    let player_kira = Player::new();
+    let player = Player::new();
 
     let tick_rate = Duration::from_millis(250);
     let (sync_io_tx, sync_io_rx) = std::sync::mpsc::channel::<IoEvent>();
-    let app = Arc::new(Mutex::new(App::new(config, sync_io_tx, player_kira, pods)));
+    let app = Arc::new(Mutex::new(App::new(sync_io_tx, player, pods)));
 
     let cloned_app = Arc::clone(&app);
     std::thread::spawn(move || {
@@ -180,7 +158,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .items
         .iter()
         .map(|i| {
-            let lines = vec![Spans::from(i.name.clone())];
+            let lines = vec![Spans::from(i.title.clone())];
             ListItem::new(lines).style(Style::default().fg(Color::White))
         })
         .collect();

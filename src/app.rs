@@ -2,8 +2,7 @@ extern crate rss;
 extern crate tui;
 
 use crate::{network::IoEvent, player::Player};
-use fred_podplayer_tui::db::models::Pod;
-use serde::{Deserialize, Serialize};
+use crate::db::models::Pod;
 use tui::widgets::ListState;
 
 use std::sync::mpsc::Sender;
@@ -13,18 +12,6 @@ use std::sync::mpsc::Sender;
 pub struct StatefulList<T> {
     pub state: ListState,
     pub items: Vec<T>,
-}
-
-#[derive(Clone, Deserialize, Serialize)]
-pub struct Config {
-    pub feeds: Vec<ConfigFeed>,
-}
-
-
-#[derive(Clone, Serialize, Deserialize)]
-pub struct ConfigFeed {
-    pub name: String,
-    pub url: String,
 }
 
 impl<T> StatefulList<T> {
@@ -70,22 +57,20 @@ pub enum NavigationStack {
 }
 
 pub struct App {
-    pub pods: StatefulList<ConfigFeed>,
+    pub pods: StatefulList<Pod>,
     pub episodes: Option<StatefulList<rss::Item>>,
     io_tx: Option<Sender<IoEvent>>,
     pub is_loading: bool,
     pub is_downloading: bool,
-    pub config: Config,
     pub navigation_stack: NavigationStack,
     pub player: Player,
     pub pods_db: Vec<Pod>,
 }
 
 impl App {
-    pub fn new(config: Config, io_tx: Sender<IoEvent>, player: Player, pods_db: Vec<Pod>) -> App {
+    pub fn new(io_tx: Sender<IoEvent>, player: Player, pods_db: Vec<Pod>) -> App {
         App {
-            config: config.clone(),
-            pods: StatefulList::with_items(config.feeds.clone()),
+            pods: StatefulList::with_items(pods_db.clone()),
             episodes: None,
             io_tx: Some(io_tx),
             is_loading: false,

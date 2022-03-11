@@ -1,6 +1,6 @@
 use super::schema::pods;
 
-#[derive(Queryable)]
+#[derive(Clone, Queryable)]
 pub struct Pod {
     pub id: i32,
     pub title: String,
