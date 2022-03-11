@@ -44,7 +44,7 @@ impl<'a> Network<'a> {
     }
 
     async fn get_channel(&mut self, url: String) {
-        let result = reqwest::get(url).await;
+        let result = reqwest::get(url.clone()).await;
         match result {
             Ok(result) => match result.bytes().await {
                 Ok(result) => {

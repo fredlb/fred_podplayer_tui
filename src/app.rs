@@ -2,6 +2,7 @@ extern crate rss;
 extern crate tui;
 
 use crate::{network::IoEvent, player::Player};
+use fred_podplayer_tui::db::models::Pod;
 use serde::{Deserialize, Serialize};
 use tui::widgets::ListState;
 
@@ -18,6 +19,7 @@ pub struct StatefulList<T> {
 pub struct Config {
     pub feeds: Vec<ConfigFeed>,
 }
+
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ConfigFeed {
@@ -76,10 +78,11 @@ pub struct App {
     pub config: Config,
     pub navigation_stack: NavigationStack,
     pub player: Player,
+    pub pods_db: Vec<Pod>,
 }
 
 impl App {
-    pub fn new(config: Config, io_tx: Sender<IoEvent>, player: Player) -> App {
+    pub fn new(config: Config, io_tx: Sender<IoEvent>, player: Player, pods_db: Vec<Pod>) -> App {
         App {
             config: config.clone(),
             pods: StatefulList::with_items(config.feeds.clone()),
@@ -88,6 +91,7 @@ impl App {
             is_loading: false,
             is_downloading: false,
             navigation_stack: NavigationStack::Main,
+            pods_db,
             player,
         }
     }

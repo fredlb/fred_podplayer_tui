@@ -1,13 +1,19 @@
-mod app;
-mod network;
-mod player;
+#[macro_use]
+extern crate diesel;
 
 extern crate crossterm;
 extern crate rss;
 extern crate serde;
 extern crate tui;
 
+mod app;
+mod network;
+mod player;
+mod db;
+
+
 use app::{App, Config, NavigationStack};
+use db::{establish_connection, get_pods};
 use player::Player;
 
 use crossterm::{
@@ -64,11 +70,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    let connection = establish_connection();
+    let pods = get_pods(&connection);
+
     let player_kira = Player::new();
 
     let tick_rate = Duration::from_millis(250);
     let (sync_io_tx, sync_io_rx) = std::sync::mpsc::channel::<IoEvent>();
-    let app = Arc::new(Mutex::new(App::new(config, sync_io_tx, player_kira)));
+    let app = Arc::new(Mutex::new(App::new(config, sync_io_tx, player_kira, pods)));
 
     let cloned_app = Arc::clone(&app);
     std::thread::spawn(move || {
