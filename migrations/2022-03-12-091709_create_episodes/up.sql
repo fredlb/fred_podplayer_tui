@@ -1,0 +1,8 @@
+CREATE TABLE episodes (
+    id INTEGER NOT NULL PRIMARY KEY,
+    uid VARCHAR NOT NULL,
+    title VARCHAR NOT NULL,
+    url VARCHAR NOT NULL,
+    audio_url VARCHAR NOT NULL,
+    description VARCHAR NOT NULL
+)

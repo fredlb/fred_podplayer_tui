@@ -91,8 +91,8 @@ impl App {
         }
     }
 
-    pub fn get_channel(&mut self, url: String) {
-        self.dispatch(IoEvent::GetChannel(url));
+    pub fn get_channel(&mut self, pod: Pod) {
+        self.dispatch(IoEvent::GetChannel(pod));
     }
 
     pub fn set_pod(&mut self, channel: rss::Channel) {

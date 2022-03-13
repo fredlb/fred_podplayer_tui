@@ -7,8 +7,7 @@ use diesel::prelude::*;
 use dotenv::dotenv;
 use std::env;
 
-use models::{NewPod, Pod};
-use schema::pods;
+use models::{Episode, NewEpisode, NewPod, Pod};
 
 pub fn establish_connection() -> SqliteConnection {
     dotenv().ok();
@@ -18,11 +17,12 @@ pub fn establish_connection() -> SqliteConnection {
 }
 
 pub fn get_pods(conn: &SqliteConnection) -> Vec<Pod> {
-    use schema::pods::dsl::*;
+    use schema::pods::dsl::pods;
     pods.load::<Pod>(conn).expect("failed to load pods")
 }
 
 pub fn create_pod(conn: &SqliteConnection, title: &str, url: &str) -> usize {
+    use schema::pods;
     let new_pod = NewPod { title, url };
 
     diesel::insert_into(pods::table)
@@ -36,4 +36,31 @@ pub fn delete_pod(conn: &SqliteConnection, title_to_delete: &str) {
     let _ = diesel::delete(pods.filter(title.like(format!("%{}%", title_to_delete))))
         .execute(conn)
         .expect(format!("failed to delete pod(s): {}", title_to_delete).as_str());
+}
+
+pub fn mark_pod_as_downloaded(conn: &SqliteConnection, pod_id: i32) {
+    use schema::pods;
+    use schema::pods::dsl::*;
+    let _ = diesel::update(pods.find(pod_id))
+        .set(pods::downloaded.eq(true))
+        .execute(conn);
+}
+
+pub fn create_episode(
+    conn: &SqliteConnection,
+    uid: &str,
+    pod_id: i32,
+    title: &str,
+    url: &str,
+    audio_url: &str,
+    description: &str,
+    downloaded: bool,
+) -> usize {
+    use schema::episodes;
+    let new_episode = NewEpisode {uid, pod_id, title, url, audio_url, description, downloaded, audio_filepath: None };
+
+    diesel::insert_into(episodes::table)
+        .values(&new_episode)
+        .execute(conn)
+        .expect("error saving episode")
 }

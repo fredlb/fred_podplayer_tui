@@ -1,6 +1,8 @@
 extern crate rss;
 use crate::app::App;
 use crate::player::TrackFile;
+use crate::db::{establish_connection, mark_pod_as_downloaded};
+use crate::db::models::{Pod};
 
 use std::sync::Arc;
 use std::io::Write;
@@ -16,7 +18,7 @@ error_chain! {
 }
 
 pub enum IoEvent {
-    GetChannel(String),
+    GetChannel(Pod),
     DownloadEpisode(String),
 }
 
@@ -31,8 +33,8 @@ impl<'a> Network<'a> {
 
     pub async fn handle_network_event(&mut self, io_event: IoEvent) {
         match io_event {
-            IoEvent::GetChannel(url) => {
-                self.get_channel(url).await;
+            IoEvent::GetChannel(pod) => {
+                self.get_channel(pod).await;
             }
             IoEvent::DownloadEpisode(url) => {
                 let _ = self.download_episode(url).await;
@@ -43,14 +45,22 @@ impl<'a> Network<'a> {
         app.is_downloading = false;
     }
 
-    async fn get_channel(&mut self, url: String) {
-        let result = reqwest::get(url.clone()).await;
+    async fn get_channel(&mut self, pod: Pod) {
+        let result = reqwest::get(pod.url).await;
         match result {
             Ok(result) => match result.bytes().await {
                 Ok(result) => {
                     let channel = rss::Channel::read_from(&result[..]);
-                    let mut app = self.app.lock().await;
-                    app.set_pod(channel.unwrap());
+                    let conn = establish_connection();
+                    match channel {
+                        Ok(chan) => {
+                            //TODO: Create episodes
+                            mark_pod_as_downloaded(&conn, pod.id);
+                        },
+                        Err(err) => {},
+                    }
+                    // let mut app = self.app.lock().await;
+                    // app.set_pod(channel.unwrap());
                 }
                 Err(_e) => {}
             },
