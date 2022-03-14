@@ -21,6 +21,12 @@ pub fn get_pods(conn: &SqliteConnection) -> Vec<Pod> {
     pods.load::<Pod>(conn).expect("failed to load pods")
 }
 
+pub fn get_pod(conn: &SqliteConnection, pod_id: i32) -> Pod {
+    use schema::pods::dsl::*;
+    let pod: Pod = pods.find(pod_id).first(conn).unwrap_or_else(|_| panic!("aaaaa"));
+    return pod;
+}
+
 pub fn create_pod(conn: &SqliteConnection, title: &str, url: &str) -> usize {
     use schema::pods;
     let new_pod = NewPod { title, url };
@@ -90,6 +96,12 @@ pub fn get_episodes_for_pod(conn: &SqliteConnection, pod_id_x: i32) -> Vec<Episo
         .load::<Episode>(conn)
         .expect("failed to fetch episodes");
     return eps;
+}
+
+pub fn get_episode(conn: &SqliteConnection, ep_id: i32) -> Episode {
+    use schema::episodes::dsl::*;
+    let ep: Episode = episodes.find(ep_id).first(conn).unwrap_or_else(|_| panic!("aaaaa"));
+    return ep;
 }
 
 pub fn mark_episode_as_downloaded(conn: &SqliteConnection, episode: &Episode, filepath: &String) -> Episode {

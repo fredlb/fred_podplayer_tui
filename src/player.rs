@@ -43,6 +43,9 @@ impl Player {
 
     pub fn play(&mut self) {
         if let Some(track) = &mut self.selected_track {
+            if let Some(handler) = &mut self.handler {
+                let _ = handler.stop(kira::tween::Tween::default());
+            }
             // Create a hint to help the format registry guess what format reader is appropriate.
             let mut hint = Hint::new();
 

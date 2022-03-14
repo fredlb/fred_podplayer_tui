@@ -2,10 +2,10 @@ extern crate rss;
 extern crate tui;
 
 use crate::db::models::{Episode, Pod};
-use crate::db::{establish_connection, get_episodes_for_pod, set_timestamp_on_episode};
+use crate::db::{establish_connection, get_episodes_for_pod, set_timestamp_on_episode, get_episode, get_pod};
 use crate::{
     network::IoEvent,
-    player::{Player, TrackFile},
+    player::Player,
 };
 use kira::sound::static_sound::PlaybackState;
 use tui::widgets::ListState;
@@ -131,10 +131,11 @@ impl App {
         self.navigation_stack = NavigationStack::Episodes;
         if let Some(index) = self.pods.state.selected() {
             let pod = &self.pods.items[index];
-            if !pod.downloaded {
+            let conn = establish_connection();
+            let updated_pod = get_pod(&conn, pod.id);
+            if !updated_pod.downloaded {
                 return self.dispatch(IoEvent::GetPodEpisodes(self.pods.items[index].clone()));
             }
-            let conn = establish_connection();
             self.episodes = Some(StatefulList::with_items(get_episodes_for_pod(
                 &conn, pod.id,
             )));
@@ -144,14 +145,17 @@ impl App {
     pub fn handle_enter_episode(&mut self) {
         if let Some(data) = self.episodes.clone() {
             if let Some(index) = data.state.selected() {
+                self.save_timestamp();
                 let ep = &data.items[index];
-                if !ep.downloaded {
+                let conn = establish_connection();
+                let updated_ep = get_episode(&conn, ep.id);
+                if !updated_ep.downloaded {
                     self.is_downloading = true;
                     return self.dispatch(IoEvent::DownloadEpisodeAudio(data.items[index].clone()));
                 }
-                self.player.selected_track = Some(ep.clone());
+                self.player.selected_track = Some(updated_ep.clone());
                 self.player.play();
-                self.player.seek(ep.timestamp);
+                self.player.seek(updated_ep.timestamp);
             }
         }
     }

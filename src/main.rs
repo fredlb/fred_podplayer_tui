@@ -7,10 +7,9 @@ extern crate serde;
 extern crate tui;
 
 mod app;
+mod db;
 mod network;
 mod player;
-mod db;
-
 
 use app::{App, NavigationStack};
 use db::{establish_connection, get_pods};
@@ -150,7 +149,7 @@ async fn run_app<B: Backend>(
 fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(90), Constraint::Percentage(10)].as_ref())
+        .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref())
         .split(f.size());
 
     let items: Vec<ListItem> = app
@@ -203,18 +202,22 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
     let cur_progress = &app.player.get_progress();
     let mut player_spans: Vec<Spans> = Vec::new();
+    let mut player_title = String::from("Player");
     match &app.player.selected_track {
-        Some(track) => player_spans.push(Spans::from(Span::from(format!(
-            "{} / {}",
-            cur_progress, &app.player.duration_str
-        )))),
+        Some(track) => {
+            player_spans.push(Spans::from(Span::from(format!(
+                "{} / {}",
+                cur_progress, &app.player.duration_str
+            ))));
+            player_title = track.title.clone();
+        }
         None => {}
     };
     if app.is_downloading {
         player_spans.push(Spans::from(Span::from("Episode is downloading...")));
     }
     let player = Paragraph::new(player_spans)
-        .block(Block::default().title("Player").borders(Borders::ALL))
+        .block(Block::default().title(player_title).borders(Borders::ALL))
         .style(Style::default().fg(Color::White).bg(Color::Black));
 
     f.render_widget(player, main_chunks[1]);
