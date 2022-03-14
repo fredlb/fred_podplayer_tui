@@ -3,16 +3,16 @@ CREATE TABLE pods (
     title VARCHAR NOT NULL,
     url VARCHAR NOT NULL,
     downloaded BOOLEAN NOT NULL DEFAULT FALSE
-)
+);
 
 CREATE TABLE episodes (
     id INTEGER NOT NULL PRIMARY KEY,
     uid VARCHAR NOT NULL,
-    pod_id INTEGER NOT NULL
+    pod_id INTEGER NOT NULL,
     title VARCHAR NOT NULL,
     url VARCHAR NOT NULL,
     audio_url VARCHAR NOT NULL,
     description VARCHAR NOT NULL,
-    audio_filepath VARCHAR NOT NULL,
+    audio_filepath VARCHAR,
     downloaded BOOLEAN NOT NULL DEFAULT FALSE
-)
+);

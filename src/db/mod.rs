@@ -46,6 +46,13 @@ pub fn mark_pod_as_downloaded(conn: &SqliteConnection, pod_id: i32) {
         .execute(conn);
 }
 
+pub fn get_episodes(conn: &SqliteConnection) -> Vec<Episode> {
+    use schema::episodes::dsl::episodes;
+    episodes
+        .load::<Episode>(conn)
+        .expect("failed to load episodes")
+}
+
 pub fn create_episode(
     conn: &SqliteConnection,
     uid: &str,
@@ -57,10 +64,36 @@ pub fn create_episode(
     downloaded: bool,
 ) -> usize {
     use schema::episodes;
-    let new_episode = NewEpisode {uid, pod_id, title, url, audio_url, description, downloaded, audio_filepath: None };
+    let new_episode = NewEpisode {
+        uid,
+        pod_id,
+        title,
+        url,
+        audio_url,
+        description,
+        downloaded,
+        audio_filepath: None,
+    };
 
     diesel::insert_into(episodes::table)
         .values(&new_episode)
         .execute(conn)
         .expect("error saving episode")
+}
+
+pub fn get_episodes_for_pod(conn: &SqliteConnection, pod_id_x: i32) -> Vec<Episode> {
+    use schema::episodes::dsl::*;
+    let eps = episodes
+        .filter(pod_id.eq(pod_id_x))
+        .load::<Episode>(conn)
+        .expect("failed to fetch episodes");
+    return eps;
+}
+
+pub fn mark_episode_as_downloaded(conn: &SqliteConnection, episode: &Episode, filepath: &String) {
+    use schema::episodes;
+    use schema::episodes::dsl::*;
+    let _ = diesel::update(episodes.find(episode.id))
+        .set((episodes::downloaded.eq(true), episodes::audio_filepath.eq(filepath)))
+        .execute(conn);
 }

@@ -1,14 +1,14 @@
 extern crate rss;
 use crate::app::App;
+use crate::db::models::{Episode, Pod};
+use crate::db::{create_episode, establish_connection, mark_pod_as_downloaded, mark_episode_as_downloaded};
 use crate::player::TrackFile;
-use crate::db::{establish_connection, mark_pod_as_downloaded};
-use crate::db::models::{Pod};
 
-use std::sync::Arc;
-use std::io::Write;
-use std::fs::{File, create_dir_all};
-use tokio::sync::Mutex;
 use error_chain::error_chain;
+use std::fs::{create_dir_all, File};
+use std::io::Write;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 error_chain! {
      foreign_links {
@@ -18,8 +18,9 @@ error_chain! {
 }
 
 pub enum IoEvent {
-    GetChannel(Pod),
-    DownloadEpisode(String),
+    GetPodEpisodes(Pod),
+    GetPodUpdates(Pod),
+    DownloadEpisodeAudio(Episode),
 }
 
 pub struct Network<'a> {
@@ -33,11 +34,13 @@ impl<'a> Network<'a> {
 
     pub async fn handle_network_event(&mut self, io_event: IoEvent) {
         match io_event {
-            IoEvent::GetChannel(pod) => {
-                self.get_channel(pod).await;
+            IoEvent::GetPodEpisodes(pod) => {
+                self.download_pod_and_episodes(pod).await;
             }
-            IoEvent::DownloadEpisode(url) => {
-                let _ = self.download_episode(url).await;
+            IoEvent::GetPodUpdates(pod) => {
+            }
+            IoEvent::DownloadEpisodeAudio(episode) => {
+                let _ = self.download_episode_audio(episode).await;
             }
         }
         let mut app = self.app.lock().await;
@@ -45,7 +48,7 @@ impl<'a> Network<'a> {
         app.is_downloading = false;
     }
 
-    async fn get_channel(&mut self, pod: Pod) {
+    async fn download_pod_and_episodes(&mut self, pod: Pod) {
         let result = reqwest::get(pod.url).await;
         match result {
             Ok(result) => match result.bytes().await {
@@ -54,13 +57,25 @@ impl<'a> Network<'a> {
                     let conn = establish_connection();
                     match channel {
                         Ok(chan) => {
+                            for item in chan.items().iter() {
+                                create_episode(
+                                    &conn,
+                                    item.guid().unwrap().value(),
+                                    pod.id,
+                                    item.title().unwrap(),
+                                    item.link().unwrap_or(""),
+                                    item.enclosure().unwrap().url(),
+                                    "",
+                                    false,
+                                );
+                            }
                             //TODO: Create episodes
                             mark_pod_as_downloaded(&conn, pod.id);
-                        },
-                        Err(err) => {},
+                        }
+                        Err(err) => panic!("failed to download episodes")
                     }
-                    // let mut app = self.app.lock().await;
-                    // app.set_pod(channel.unwrap());
+                    let mut app = self.app.lock().await;
+                    app.set_active_pod(pod.id);
                 }
                 Err(_e) => {}
             },
@@ -68,8 +83,8 @@ impl<'a> Network<'a> {
         }
     }
 
-    async fn download_episode(&mut self, url: String) -> Result<()> {
-        let result = reqwest::get(url).await?;
+    async fn download_episode_audio(&mut self, episode: Episode) -> Result<()> {
+        let result = reqwest::get(&episode.audio_url).await?;
         let filename;
         let mut dest = {
             let fname = result
@@ -85,8 +100,13 @@ impl<'a> Network<'a> {
         let content = result.bytes().await?;
         create_dir_all("./data")?;
         dest.write_all(&content)?;
+        let conn = establish_connection();
+        mark_episode_as_downloaded(&conn, &episode, &filename);
         let mut app = self.app.lock().await;
-        app.player.selected_track = Some(TrackFile { filepath: filename, duration: String::from("") });
+        app.player.selected_track = Some(TrackFile {
+            filepath: filename,
+            duration: String::from(""),
+        });
         app.player.play();
         Ok(())
     }

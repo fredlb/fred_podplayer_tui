@@ -1,1 +1,0 @@
-ALTER TABLE episodes ADD COLUMN audio_filepath VARCHAR NOT NULL

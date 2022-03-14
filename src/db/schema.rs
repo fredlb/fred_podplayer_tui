@@ -2,13 +2,13 @@ table! {
     episodes (id) {
         id -> Integer,
         uid -> Text,
+        pod_id -> Integer,
         title -> Text,
         url -> Text,
         audio_url -> Text,
         description -> Text,
-        audio_filepath -> Text,
+        audio_filepath -> Nullable<Text>,
         downloaded -> Bool,
-        pod_id -> Integer,
     }
 }
 

@@ -1,6 +1,6 @@
 use super::schema::{pods, episodes};
 
-#[derive(Identifiable, Queryable, PartialEq)]
+#[derive(Identifiable, Queryable, PartialEq, Debug, Clone)]
 #[table_name="pods"]
 pub struct Pod {
     pub id: i32,

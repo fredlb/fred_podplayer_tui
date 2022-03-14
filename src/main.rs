@@ -14,6 +14,7 @@ mod db;
 
 use app::{App, NavigationStack};
 use db::{establish_connection, get_pods};
+use db::models::{Pod, Episode};
 use player::Player;
 
 use crossterm::{
@@ -123,8 +124,8 @@ async fn run_app<B: Backend>(
                     modifiers: KeyModifiers::NONE,
                     code: KeyCode::Enter,
                 }) => match app.navigation_stack {
-                    NavigationStack::Main => app.view_pod_under_cursor(),
-                    NavigationStack::Episodes => app.download_episode_under_cursor(),
+                    NavigationStack::Main => app.handle_enter_pod(),
+                    NavigationStack::Episodes => app.handle_enter_episode(),
                 },
                 Event::Key(KeyEvent {
                     modifiers: KeyModifiers::NONE,
@@ -181,8 +182,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
     let mut episodes_items = Vec::<ListItem>::new();
     if let Some(data) = &app.episodes {
-        for news in data.items.iter() {
-            let text = vec![Spans::from(String::from(news.title().unwrap()))];
+        for ep in data.items.iter() {
+            let text = vec![Spans::from(String::from(&ep.title))];
             episodes_items.push(ListItem::new(text).style(Style::default().fg(Color::White)));
         }
     };
