@@ -14,7 +14,6 @@ mod db;
 
 use app::{App, NavigationStack};
 use db::{establish_connection, get_pods};
-use db::models::{Pod, Episode};
 use player::Player;
 
 use crossterm::{
@@ -130,7 +129,7 @@ async fn run_app<B: Backend>(
                 Event::Key(KeyEvent {
                     modifiers: KeyModifiers::NONE,
                     code: KeyCode::Esc,
-                }) => app.player.toggle_playback(),
+                }) => app.toggle_playback(),
                 Event::Key(KeyEvent {
                     modifiers: KeyModifiers::NONE,
                     code: KeyCode::Char('o'),
@@ -203,15 +202,11 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .highlight_symbol(">> ");
 
     let cur_progress = &app.player.get_progress();
-    // let progress_text = match &app.player.selected_track {
-    //     Some(track) => format!("{} / {}", cur_progress, track.duration),
-    //     None => String::from(""),
-    // };
     let mut player_spans: Vec<Spans> = Vec::new();
     match &app.player.selected_track {
         Some(track) => player_spans.push(Spans::from(Span::from(format!(
             "{} / {}",
-            cur_progress, track.duration
+            cur_progress, &app.player.duration_str
         )))),
         None => {}
     };

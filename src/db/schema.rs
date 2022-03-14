@@ -9,6 +9,8 @@ table! {
         description -> Text,
         audio_filepath -> Nullable<Text>,
         downloaded -> Bool,
+        played -> Bool,
+        timestamp -> Float,
     }
 }
 

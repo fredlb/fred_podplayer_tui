@@ -69,7 +69,6 @@ impl<'a> Network<'a> {
                                     false,
                                 );
                             }
-                            //TODO: Create episodes
                             mark_pod_as_downloaded(&conn, pod.id);
                         }
                         Err(err) => panic!("failed to download episodes")
@@ -101,12 +100,9 @@ impl<'a> Network<'a> {
         create_dir_all("./data")?;
         dest.write_all(&content)?;
         let conn = establish_connection();
-        mark_episode_as_downloaded(&conn, &episode, &filename);
+        let updated_ep = mark_episode_as_downloaded(&conn, &episode, &filename);
         let mut app = self.app.lock().await;
-        app.player.selected_track = Some(TrackFile {
-            filepath: filename,
-            duration: String::from(""),
-        });
+        app.player.selected_track = Some(updated_ep);
         app.player.play();
         Ok(())
     }

@@ -16,6 +16,8 @@ use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 use symphonia::core::units::{Time, TimeBase};
 
+use crate::db::models::Episode;
+
 pub struct TrackFile {
     pub filepath: String,
     pub duration: String,
@@ -23,8 +25,9 @@ pub struct TrackFile {
 
 pub struct Player {
     manager: AudioManager,
-    pub selected_track: Option<TrackFile>,
+    pub selected_track: Option<Episode>,
     handler: Option<<StreamingSoundData as SoundData>::Handle>,
+    pub duration_str: String,
 }
 
 impl Player {
@@ -34,6 +37,7 @@ impl Player {
             manager,
             selected_track: None,
             handler: None,
+            duration_str: String::from(""),
         }
     }
 
@@ -45,7 +49,7 @@ impl Player {
             // If the path string is '-' then read from standard input.
             let source = {
                 // Othwerise, get a Path from the path string.
-                let path = Path::new(&track.filepath);
+                let path = Path::new(track.audio_filepath.as_ref().unwrap());
 
                 // Provide the file extension as a hint.
                 if let Some(extension) = path.extension() {
@@ -68,14 +72,14 @@ impl Player {
 
                     if let Some(n_frames) = params.n_frames {
                         if let Some(tb) = params.time_base {
-                            track.duration = fmt_time(n_frames, tb);
+                            self.duration_str = fmt_time(n_frames, tb);
                         }
                     }
                 }
                 Err(_) => panic!("could not probe audio for metadata"),
             }
             let sound =
-                StreamingSoundData::from_file(&track.filepath, StreamingSoundSettings::default())
+                StreamingSoundData::from_file(track.audio_filepath.as_ref().unwrap(), StreamingSoundSettings::default())
                     .unwrap();
             self.handler = Some(self.manager.play(sound).unwrap());
         }
@@ -93,6 +97,21 @@ impl Player {
         }
     }
 
+    pub fn get_playback_state(&mut self) -> PlaybackState {
+        if let Some(handler) = &mut self.handler {
+            return handler.state();
+        } else {
+            return PlaybackState::Stopped;
+        }
+    }
+
+    pub fn get_current_timestamp(&mut self) -> f32 {
+        match &self.handler {
+            Some(handler) => return handler.position().clone() as f32,
+            None => return 0.0,
+        }
+    }
+
     pub fn jump_forward_10s(&mut self) {
         if let Some(handler) = &mut self.handler {
             handler.seek_by(10.0).unwrap();
@@ -102,6 +121,12 @@ impl Player {
     pub fn jump_backward_10s(&mut self) {
         if let Some(handler) = &mut self.handler {
             handler.seek_by(-10.0).unwrap();
+        }
+    }
+
+    pub fn seek(&mut self, ts: f32) {
+        if let Some(handler) = &mut self.handler {
+            handler.seek_by(ts as f64).unwrap();
         }
     }
 

@@ -73,6 +73,8 @@ pub fn create_episode(
         description,
         downloaded,
         audio_filepath: None,
+        played: false,
+        timestamp: 0.0,
     };
 
     diesel::insert_into(episodes::table)
@@ -90,10 +92,20 @@ pub fn get_episodes_for_pod(conn: &SqliteConnection, pod_id_x: i32) -> Vec<Episo
     return eps;
 }
 
-pub fn mark_episode_as_downloaded(conn: &SqliteConnection, episode: &Episode, filepath: &String) {
+pub fn mark_episode_as_downloaded(conn: &SqliteConnection, episode: &Episode, filepath: &String) -> Episode {
     use schema::episodes;
     use schema::episodes::dsl::*;
     let _ = diesel::update(episodes.find(episode.id))
         .set((episodes::downloaded.eq(true), episodes::audio_filepath.eq(filepath)))
+        .execute(conn);
+    let updated_ep: Episode = episodes.find(episode.id).first(conn).unwrap_or_else(|_| panic!("aaaaa"));
+    return updated_ep;
+}
+
+pub fn set_timestamp_on_episode(conn: &SqliteConnection, episode_id: i32, ts: f32) {
+    use schema::episodes;
+    use schema::episodes::dsl::*;
+    let _ = diesel::update(episodes.find(episode_id))
+        .set(episodes::timestamp.eq(ts))
         .execute(conn);
 }

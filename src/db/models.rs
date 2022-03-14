@@ -29,6 +29,8 @@ pub struct Episode {
     pub description: String,
     pub audio_filepath: Option<String>,
     pub downloaded: bool,
+    pub played: bool,
+    pub timestamp: f32,
 }
 
 #[derive(Insertable)]
@@ -42,4 +44,6 @@ pub struct NewEpisode<'a> {
     pub description: &'a str,
     pub audio_filepath: Option<&'a str>,
     pub downloaded: bool,
+    pub played: bool,
+    pub timestamp: f32,
 }
