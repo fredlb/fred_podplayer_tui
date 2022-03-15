@@ -1,28 +1,20 @@
 extern crate rss;
 extern crate tui;
 
+use crate::db::models::{Episode, Pod};
+use crate::db::{
+    establish_connection, get_episode, get_episodes_for_pod, get_pod, set_timestamp_on_episode,
+};
 use crate::{network::IoEvent, player::Player};
-use serde::{Deserialize, Serialize};
+use kira::sound::static_sound::PlaybackState;
 use tui::widgets::ListState;
 
 use std::sync::mpsc::Sender;
-
 
 #[derive(Clone)]
 pub struct StatefulList<T> {
     pub state: ListState,
     pub items: Vec<T>,
-}
-
-#[derive(Clone, Deserialize, Serialize)]
-pub struct Config {
-    pub feeds: Vec<ConfigFeed>,
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-pub struct ConfigFeed {
-    pub name: String,
-    pub url: String,
 }
 
 impl<T> StatefulList<T> {
@@ -68,27 +60,27 @@ pub enum NavigationStack {
 }
 
 pub struct App {
-    pub pods: StatefulList<ConfigFeed>,
-    pub episodes: Option<StatefulList<rss::Item>>,
+    pub pods: StatefulList<Pod>,
+    pub episodes: Option<StatefulList<Episode>>,
     io_tx: Option<Sender<IoEvent>>,
     pub is_loading: bool,
     pub is_downloading: bool,
-    pub config: Config,
     pub navigation_stack: NavigationStack,
     pub player: Player,
+    pub active_pod_id: i32,
 }
 
 impl App {
-    pub fn new(config: Config, io_tx: Sender<IoEvent>, player: Player) -> App {
+    pub fn new(io_tx: Sender<IoEvent>, player: Player, pods_db: Vec<Pod>) -> App {
         App {
-            config: config.clone(),
-            pods: StatefulList::with_items(config.feeds.clone()),
+            pods: StatefulList::with_items(pods_db.clone()),
             episodes: None,
             io_tx: Some(io_tx),
             is_loading: false,
             is_downloading: false,
             navigation_stack: NavigationStack::Main,
             player,
+            active_pod_id: 0,
         }
     }
 
@@ -102,34 +94,70 @@ impl App {
         }
     }
 
-    pub fn get_channel(&mut self, url: String) {
-        self.dispatch(IoEvent::GetChannel(url));
-    }
-
-    pub fn set_pod(&mut self, channel: rss::Channel) {
-        self.episodes = Some(StatefulList::with_items(channel.items().to_vec()));
-    }
-
-    pub fn view_pod_under_cursor(&mut self) {
-        self.navigation_stack = NavigationStack::Episodes;
-        if let Some(index) = self.pods.state.selected() {
-            self.get_channel(self.pods.items[index].url.clone());
-        }
+    pub fn set_active_pod(&mut self, id: i32) {
+        self.active_pod_id = id;
+        let conn = establish_connection();
+        let eps = get_episodes_for_pod(&conn, id);
+        self.episodes = Some(StatefulList::with_items(eps));
     }
 
     pub fn back(&mut self) {
         self.navigation_stack = NavigationStack::Main;
     }
-    
-    // TODO: Play or downlaod? Play if downloaded?
-    // FIXME: Chain these if lets somehow with ? operator?
-    pub fn download_episode_under_cursor(&mut self) {
+
+    pub fn toggle_playback(&mut self) {
+        match self.player.get_playback_state() {
+            PlaybackState::Playing => {
+                self.save_timestamp();
+                self.player.toggle_playback();
+            }
+            PlaybackState::Paused | PlaybackState::Pausing => {
+                self.player.toggle_playback();
+            }
+            _ => {}
+        }
+    }
+
+    pub fn save_timestamp(&mut self) {
+        if let Some(selected_track) = &self.player.selected_track {
+            let conn = establish_connection();
+            set_timestamp_on_episode(
+                &conn,
+                selected_track.id.clone(),
+                self.player.get_current_timestamp(),
+            );
+        }
+    }
+
+    pub fn handle_enter_pod(&mut self) {
+        self.navigation_stack = NavigationStack::Episodes;
+        if let Some(index) = self.pods.state.selected() {
+            let pod = &self.pods.items[index];
+            let conn = establish_connection();
+            let updated_pod = get_pod(&conn, pod.id);
+            if !updated_pod.downloaded {
+                return self.dispatch(IoEvent::GetPodEpisodes(self.pods.items[index].clone()));
+            }
+            self.episodes = Some(StatefulList::with_items(get_episodes_for_pod(
+                &conn, pod.id,
+            )));
+        }
+    }
+
+    pub fn handle_enter_episode(&mut self) {
         if let Some(data) = self.episodes.clone() {
             if let Some(index) = data.state.selected() {
-                if let Some(enc) = &data.items[index].enclosure {
+                self.save_timestamp();
+                let ep = &data.items[index];
+                let conn = establish_connection();
+                let updated_ep = get_episode(&conn, ep.id);
+                if !updated_ep.downloaded {
                     self.is_downloading = true;
-                    self.dispatch(IoEvent::DownloadEpisode(enc.url.clone()));
+                    return self.dispatch(IoEvent::DownloadEpisodeAudio(data.items[index].clone()));
                 }
+                self.player.selected_track = Some(updated_ep.clone());
+                self.player.play();
+                self.player.seek(updated_ep.timestamp);
             }
         }
     }

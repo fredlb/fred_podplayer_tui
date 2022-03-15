@@ -1,13 +1,18 @@
-mod app;
-mod network;
-mod player;
+#[macro_use]
+extern crate diesel;
 
 extern crate crossterm;
 extern crate rss;
 extern crate serde;
 extern crate tui;
 
-use app::{App, Config, NavigationStack};
+mod app;
+mod db;
+mod network;
+mod player;
+
+use app::{App, NavigationStack};
+use db::{establish_connection, get_pods};
 use player::Player;
 
 use crossterm::{
@@ -20,9 +25,8 @@ use crossterm::{
 use network::{IoEvent, Network};
 
 use std::{
-    fs, io,
+    io,
     sync::Arc,
-    thread,
     time::{Duration, Instant},
 };
 use tokio::sync::Mutex;
@@ -43,32 +47,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let config_file =
-        fs::read_to_string("./config.json").expect("Something went wrong reading config file");
+    let connection = establish_connection();
+    let pods = get_pods(&connection);
 
-    let config: Config;
-    match serde_json::from_str(&config_file) {
-        Ok(conf) => config = conf,
-        Err(e) => {
-            println!("{}", e);
-            thread::sleep(Duration::from_secs(5));
-            // restore terminal
-            disable_raw_mode()?;
-            execute!(
-                terminal.backend_mut(),
-                LeaveAlternateScreen,
-                DisableMouseCapture
-            )?;
-            terminal.show_cursor()?;
-            return Ok(());
-        }
-    }
-
-    let player_kira = Player::new();
+    let player = Player::new();
 
     let tick_rate = Duration::from_millis(250);
     let (sync_io_tx, sync_io_rx) = std::sync::mpsc::channel::<IoEvent>();
-    let app = Arc::new(Mutex::new(App::new(config, sync_io_tx, player_kira)));
+    let app = Arc::new(Mutex::new(App::new(sync_io_tx, player, pods)));
 
     let cloned_app = Arc::clone(&app);
     std::thread::spawn(move || {
@@ -115,7 +101,10 @@ async fn run_app<B: Backend>(
                     modifiers: KeyModifiers::NONE,
                     code: KeyCode::Char('q'),
                 }) => match app.navigation_stack {
-                    NavigationStack::Main => return Ok(()),
+                    NavigationStack::Main => {
+                        app.save_timestamp();
+                        return Ok(());
+                    },
                     NavigationStack::Episodes => app.back(),
                 },
                 Event::Key(KeyEvent {
@@ -136,13 +125,13 @@ async fn run_app<B: Backend>(
                     modifiers: KeyModifiers::NONE,
                     code: KeyCode::Enter,
                 }) => match app.navigation_stack {
-                    NavigationStack::Main => app.view_pod_under_cursor(),
-                    NavigationStack::Episodes => app.download_episode_under_cursor(),
+                    NavigationStack::Main => app.handle_enter_pod(),
+                    NavigationStack::Episodes => app.handle_enter_episode(),
                 },
                 Event::Key(KeyEvent {
                     modifiers: KeyModifiers::NONE,
                     code: KeyCode::Esc,
-                }) => app.player.toggle_playback(),
+                }) => app.toggle_playback(),
                 Event::Key(KeyEvent {
                     modifiers: KeyModifiers::NONE,
                     code: KeyCode::Char('o'),
@@ -163,7 +152,7 @@ async fn run_app<B: Backend>(
 fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(90), Constraint::Percentage(10)].as_ref())
+        .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref())
         .split(f.size());
 
     let items: Vec<ListItem> = app
@@ -171,7 +160,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .items
         .iter()
         .map(|i| {
-            let lines = vec![Spans::from(i.name.clone())];
+            let lines = vec![Spans::from(i.title.clone())];
             ListItem::new(lines).style(Style::default().fg(Color::White))
         })
         .collect();
@@ -194,8 +183,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
     let mut episodes_items = Vec::<ListItem>::new();
     if let Some(data) = &app.episodes {
-        for news in data.items.iter() {
-            let text = vec![Spans::from(String::from(news.title().unwrap()))];
+        for ep in data.items.iter() {
+            let text = vec![Spans::from(String::from(&ep.title))];
             episodes_items.push(ListItem::new(text).style(Style::default().fg(Color::White)));
         }
     };
@@ -215,23 +204,23 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .highlight_symbol(">> ");
 
     let cur_progress = &app.player.get_progress();
-    // let progress_text = match &app.player.selected_track {
-    //     Some(track) => format!("{} / {}", cur_progress, track.duration),
-    //     None => String::from(""),
-    // };
     let mut player_spans: Vec<Spans> = Vec::new();
+    let mut player_title = String::from("Player");
     match &app.player.selected_track {
-        Some(track) => player_spans.push(Spans::from(Span::from(format!(
-            "{} / {}",
-            cur_progress, track.duration
-        )))),
+        Some(track) => {
+            player_spans.push(Spans::from(Span::from(format!(
+                "{} / {}",
+                cur_progress, &app.player.duration_str
+            ))));
+            player_title = track.title.clone();
+        }
         None => {}
     };
     if app.is_downloading {
         player_spans.push(Spans::from(Span::from("Episode is downloading...")));
     }
     let player = Paragraph::new(player_spans)
-        .block(Block::default().title("Player").borders(Borders::ALL))
+        .block(Block::default().title(player_title).borders(Borders::ALL))
         .style(Style::default().fg(Color::White).bg(Color::Black));
 
     f.render_widget(player, main_chunks[1]);
