@@ -545,6 +545,7 @@ dependencies = [
  "symphonia",
  "tokio",
  "tui",
+ "unicode-width",
 ]
 
 [[package]]

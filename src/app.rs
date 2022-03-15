@@ -59,6 +59,16 @@ pub enum NavigationStack {
     Episodes,
 }
 
+pub enum InputMode {
+    Normal,
+    Editing,
+}
+
+pub enum InputField {
+    Name,
+    Url,
+}
+
 pub struct App {
     pub pods: StatefulList<Pod>,
     pub episodes: Option<StatefulList<Episode>>,
@@ -68,6 +78,11 @@ pub struct App {
     pub navigation_stack: NavigationStack,
     pub player: Player,
     pub active_pod_id: i32,
+    pub show_popup: bool,
+    pub input_pod_name: String,
+    pub input_pod_url: String,
+    pub input_mode: InputMode,
+    pub input_field: InputField,
 }
 
 impl App {
@@ -81,6 +96,11 @@ impl App {
             navigation_stack: NavigationStack::Main,
             player,
             active_pod_id: 0,
+            show_popup: false,
+            input_pod_name: String::new(),
+            input_pod_url: String::new(),
+            input_mode: InputMode::Normal,
+            input_field: InputField::Name,
         }
     }
 

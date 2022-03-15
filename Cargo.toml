@@ -18,3 +18,4 @@ kira = "0.6"
 symphonia = { version = "0.5", features = [ "aac", "alac", "mp3", "isomp4" ] }
 diesel = { version = "1.4.8", features = ["sqlite"] }
 dotenv = "0.10"
+unicode-width = "0.1"

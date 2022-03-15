@@ -11,9 +11,10 @@ mod db;
 mod network;
 mod player;
 
-use app::{App, NavigationStack};
+use app::{App, InputField, InputMode, NavigationStack};
 use db::{establish_connection, get_pods};
 use player::Player;
+use unicode_width::UnicodeWidthStr;
 
 use crossterm::{
     event::{
@@ -32,10 +33,10 @@ use std::{
 use tokio::sync::Mutex;
 use tui::{
     backend::{Backend, CrosstermBackend},
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
     Frame, Terminal,
 };
 
@@ -96,51 +97,89 @@ async fn run_app<B: Backend>(
             .unwrap_or_else(|| Duration::from_secs(0));
         if crossterm::event::poll(timeout)? {
             let event = event::read()?;
-            match event {
-                Event::Key(KeyEvent {
-                    modifiers: KeyModifiers::NONE,
-                    code: KeyCode::Char('q'),
-                }) => match app.navigation_stack {
-                    NavigationStack::Main => {
-                        app.save_timestamp();
-                        return Ok(());
+            match app.input_mode {
+                InputMode::Normal => match event {
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Char('q'),
+                    }) => match app.navigation_stack {
+                        NavigationStack::Main => {
+                            app.save_timestamp();
+                            return Ok(());
+                        }
+                        NavigationStack::Episodes => app.back(),
                     },
-                    NavigationStack::Episodes => app.back(),
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Char('j'),
+                    }) => match app.navigation_stack {
+                        NavigationStack::Main => app.pods.next(),
+                        NavigationStack::Episodes => app.episodes.as_mut().unwrap().next(),
+                    },
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Char('k'),
+                    }) => match app.navigation_stack {
+                        NavigationStack::Main => app.pods.previous(),
+                        NavigationStack::Episodes => app.episodes.as_mut().unwrap().previous(),
+                    },
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Enter,
+                    }) => match app.navigation_stack {
+                        NavigationStack::Main => app.handle_enter_pod(),
+                        NavigationStack::Episodes => app.handle_enter_episode(),
+                    },
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Esc,
+                    }) => app.toggle_playback(),
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Char('o'),
+                    }) => app.player.jump_forward_10s(),
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Char('i'),
+                    }) => app.player.jump_backward_10s(),
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Char('n'),
+                    }) => app.input_mode = InputMode::Editing,
+                    _ => {}
                 },
-                Event::Key(KeyEvent {
-                    modifiers: KeyModifiers::NONE,
-                    code: KeyCode::Char('j'),
-                }) => match app.navigation_stack {
-                    NavigationStack::Main => app.pods.next(),
-                    NavigationStack::Episodes => app.episodes.as_mut().unwrap().next(),
+                InputMode::Editing => match event {
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Char(c),
+                    }) => match app.input_field {
+                        InputField::Name => app.input_pod_name.push(c),
+                        InputField::Url => app.input_pod_url.push(c),
+                    },
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Esc,
+                    }) => app.input_mode = InputMode::Normal,
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Backspace,
+                    }) => match app.input_field {
+                        InputField::Name => {
+                            let _ = app.input_pod_name.pop();
+                        }
+                        InputField::Url => {
+                            let _ = app.input_pod_url.pop();
+                        }
+                    },
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Tab,
+                    }) => match app.input_field {
+                        InputField::Name => app.input_field = InputField::Url,
+                        InputField::Url => app.input_field = InputField::Name,
+                    },
+                    _ => {}
                 },
-                Event::Key(KeyEvent {
-                    modifiers: KeyModifiers::NONE,
-                    code: KeyCode::Char('k'),
-                }) => match app.navigation_stack {
-                    NavigationStack::Main => app.pods.previous(),
-                    NavigationStack::Episodes => app.episodes.as_mut().unwrap().previous(),
-                },
-                Event::Key(KeyEvent {
-                    modifiers: KeyModifiers::NONE,
-                    code: KeyCode::Enter,
-                }) => match app.navigation_stack {
-                    NavigationStack::Main => app.handle_enter_pod(),
-                    NavigationStack::Episodes => app.handle_enter_episode(),
-                },
-                Event::Key(KeyEvent {
-                    modifiers: KeyModifiers::NONE,
-                    code: KeyCode::Esc,
-                }) => app.toggle_playback(),
-                Event::Key(KeyEvent {
-                    modifiers: KeyModifiers::NONE,
-                    code: KeyCode::Char('o'),
-                }) => app.player.jump_forward_10s(),
-                Event::Key(KeyEvent {
-                    modifiers: KeyModifiers::NONE,
-                    code: KeyCode::Char('i'),
-                }) => app.player.jump_backward_10s(),
-                _ => {}
             }
         }
         if last_tick.elapsed() >= tick_rate {
@@ -150,6 +189,7 @@ async fn run_app<B: Backend>(
 }
 
 fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
+    let size = f.size();
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref())
@@ -239,4 +279,67 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
             }
         }
     }
+    if let InputMode::Editing = app.input_mode {
+        let block = Block::default().title("New pod").borders(Borders::ALL);
+        let area = centered_rect(80, 25, size);
+        let input1 = Paragraph::new(app.input_pod_name.as_ref())
+            .style(Style::default())
+            .block(Block::default().borders(Borders::ALL).title("Name"));
+        let input2 = Paragraph::new(app.input_pod_url.as_ref())
+            .style(Style::default())
+            .block(Block::default().borders(Borders::ALL).title("URL"));
+        let input_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)].as_ref())
+            .split(area);
+        // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
+        match app.input_field {
+            InputField::Name => {
+                f.set_cursor(
+                    // Put cursor past the end of the input text
+                    input_chunks[0].x + app.input_pod_name.width() as u16 + 1,
+                    // Move one line down, from the border to the input line
+                    input_chunks[0].y + 1,
+                );
+            }
+            InputField::Url => {
+                f.set_cursor(
+                    // Put cursor past the end of the input text
+                    input_chunks[1].x + app.input_pod_url.width() as u16 + 1,
+                    // Move one line down, from the border to the input line
+                    input_chunks[1].y + 1,
+                );
+            }
+        }
+        f.render_widget(Clear, area); //this clears out the background
+        f.render_widget(input1, input_chunks[0]);
+        f.render_widget(input2, input_chunks[1]);
+    }
+}
+
+/// helper function to create a centered rect using up certain percentage of the available rect `r`
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_y) / 2),
+                Constraint::Percentage(percent_y),
+                Constraint::Percentage((100 - percent_y) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_x) / 2),
+                Constraint::Percentage(percent_x),
+                Constraint::Percentage((100 - percent_x) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(popup_layout[1])[1]
 }
