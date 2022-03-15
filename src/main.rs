@@ -157,6 +157,13 @@ async fn run_app<B: Backend>(
                         InputField::Url => app.input_pod_url.push(c),
                     },
                     Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::SHIFT,
+                        code: KeyCode::Char(c),
+                    }) => match app.input_field {
+                        InputField::Name => app.input_pod_name.push(c),
+                        InputField::Url => app.input_pod_url.push(c),
+                    },
+                    Event::Key(KeyEvent {
                         modifiers: KeyModifiers::NONE,
                         code: KeyCode::Esc,
                     }) => app.input_mode = InputMode::Normal,
@@ -178,6 +185,10 @@ async fn run_app<B: Backend>(
                         InputField::Name => app.input_field = InputField::Url,
                         InputField::Url => app.input_field = InputField::Name,
                     },
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Enter,
+                    }) => app.create_pod(),
                     _ => {}
                 },
             }

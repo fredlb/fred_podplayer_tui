@@ -3,7 +3,7 @@ extern crate tui;
 
 use crate::db::models::{Episode, Pod};
 use crate::db::{
-    establish_connection, get_episode, get_episodes_for_pod, get_pod, set_timestamp_on_episode,
+    establish_connection, get_episode, get_episodes_for_pod, get_pod, set_timestamp_on_episode, create_pod, get_pods,
 };
 use crate::{network::IoEvent, player::Player};
 use kira::sound::static_sound::PlaybackState;
@@ -180,5 +180,18 @@ impl App {
                 self.player.seek(updated_ep.timestamp);
             }
         }
+    }
+
+    pub fn create_pod(&mut self) {
+        //TODO: Validate input
+        //1. Validate input
+        //2. Create pod in db
+        let conn = establish_connection();
+        let _ = create_pod(&conn, &self.input_pod_name, &self.input_pod_url);
+        //3. Refresh pod list
+        let pods = get_pods(&conn);
+        self.pods = StatefulList::with_items(pods);
+        //4. Toggle editing mode to normal
+        self.input_mode = InputMode::Normal;
     }
 }
