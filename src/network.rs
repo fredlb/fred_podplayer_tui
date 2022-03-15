@@ -1,8 +1,10 @@
 extern crate rss;
+use reqwest::header::USER_AGENT;
 use crate::app::App;
 use crate::db::models::{Episode, Pod};
-use crate::db::{create_episode, establish_connection, mark_pod_as_downloaded, mark_episode_as_downloaded};
-use crate::player::TrackFile;
+use crate::db::{
+    create_episode, establish_connection, mark_episode_as_downloaded, mark_pod_as_downloaded,
+};
 
 use error_chain::error_chain;
 use std::fs::{create_dir_all, File};
@@ -37,8 +39,7 @@ impl<'a> Network<'a> {
             IoEvent::GetPodEpisodes(pod) => {
                 self.download_pod_and_episodes(pod).await;
             }
-            IoEvent::GetPodUpdates(pod) => {
-            }
+            IoEvent::GetPodUpdates(pod) => {}
             IoEvent::DownloadEpisodeAudio(episode) => {
                 let _ = self.download_episode_audio(episode).await;
             }
@@ -49,8 +50,14 @@ impl<'a> Network<'a> {
     }
 
     async fn download_pod_and_episodes(&mut self, pod: Pod) {
-        let result = reqwest::get(pod.url).await;
-        match result {
+        // let result = reqwest::get(&pod.url).await;
+        let client = reqwest::Client::new();
+        let res = client
+            .get(&pod.url)
+            .header(USER_AGENT, "Mah podplayah")
+            .send()
+            .await;
+        match res {
             Ok(result) => match result.bytes().await {
                 Ok(result) => {
                     let channel = rss::Channel::read_from(&result[..]);
@@ -71,7 +78,7 @@ impl<'a> Network<'a> {
                             }
                             mark_pod_as_downloaded(&conn, pod.id);
                         }
-                        Err(err) => panic!("failed to download episodes")
+                        Err(err) => panic!("failed to download episodes: {}", err),
                     }
                     let mut app = self.app.lock().await;
                     app.set_active_pod(pod.id);

@@ -2,11 +2,10 @@ extern crate rss;
 extern crate tui;
 
 use crate::db::models::{Episode, Pod};
-use crate::db::{establish_connection, get_episodes_for_pod, set_timestamp_on_episode, get_episode, get_pod};
-use crate::{
-    network::IoEvent,
-    player::Player,
+use crate::db::{
+    establish_connection, get_episode, get_episodes_for_pod, get_pod, set_timestamp_on_episode,
 };
+use crate::{network::IoEvent, player::Player};
 use kira::sound::static_sound::PlaybackState;
 use tui::widgets::ListState;
 
@@ -17,7 +16,6 @@ pub struct StatefulList<T> {
     pub state: ListState,
     pub items: Vec<T>,
 }
-
 
 impl<T> StatefulList<T> {
     pub fn with_items(items: Vec<T>) -> StatefulList<T> {
@@ -112,18 +110,22 @@ impl App {
             PlaybackState::Playing => {
                 self.save_timestamp();
                 self.player.toggle_playback();
-            },
+            }
             PlaybackState::Paused | PlaybackState::Pausing => {
                 self.player.toggle_playback();
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 
     pub fn save_timestamp(&mut self) {
         if let Some(selected_track) = &self.player.selected_track {
             let conn = establish_connection();
-            set_timestamp_on_episode(&conn, selected_track.id.clone(), self.player.get_current_timestamp());
+            set_timestamp_on_episode(
+                &conn,
+                selected_track.id.clone(),
+                self.player.get_current_timestamp(),
+            );
         }
     }
 

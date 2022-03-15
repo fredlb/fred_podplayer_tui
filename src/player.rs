@@ -18,11 +18,6 @@ use symphonia::core::units::{Time, TimeBase};
 
 use crate::db::models::Episode;
 
-pub struct TrackFile {
-    pub filepath: String,
-    pub duration: String,
-}
-
 pub struct Player {
     manager: AudioManager,
     pub selected_track: Option<Episode>,

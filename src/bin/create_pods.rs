@@ -18,6 +18,7 @@ fn main() {
     println!("\nUrl?",);
     let mut url = String::new();
     stdin().read_line(&mut url).unwrap();
+    let url = &url[..(url.len() - 1)];
 
     let _ = create_pod(&connection, title, &url);
     println!("\nSaved pod {}", title);

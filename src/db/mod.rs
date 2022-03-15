@@ -23,7 +23,10 @@ pub fn get_pods(conn: &SqliteConnection) -> Vec<Pod> {
 
 pub fn get_pod(conn: &SqliteConnection, pod_id: i32) -> Pod {
     use schema::pods::dsl::*;
-    let pod: Pod = pods.find(pod_id).first(conn).unwrap_or_else(|_| panic!("aaaaa"));
+    let pod: Pod = pods
+        .find(pod_id)
+        .first(conn)
+        .unwrap_or_else(|_| panic!("aaaaa"));
     return pod;
 }
 
@@ -100,17 +103,30 @@ pub fn get_episodes_for_pod(conn: &SqliteConnection, pod_id_x: i32) -> Vec<Episo
 
 pub fn get_episode(conn: &SqliteConnection, ep_id: i32) -> Episode {
     use schema::episodes::dsl::*;
-    let ep: Episode = episodes.find(ep_id).first(conn).unwrap_or_else(|_| panic!("aaaaa"));
+    let ep: Episode = episodes
+        .find(ep_id)
+        .first(conn)
+        .unwrap_or_else(|_| panic!("aaaaa"));
     return ep;
 }
 
-pub fn mark_episode_as_downloaded(conn: &SqliteConnection, episode: &Episode, filepath: &String) -> Episode {
+pub fn mark_episode_as_downloaded(
+    conn: &SqliteConnection,
+    episode: &Episode,
+    filepath: &String,
+) -> Episode {
     use schema::episodes;
     use schema::episodes::dsl::*;
     let _ = diesel::update(episodes.find(episode.id))
-        .set((episodes::downloaded.eq(true), episodes::audio_filepath.eq(filepath)))
+        .set((
+            episodes::downloaded.eq(true),
+            episodes::audio_filepath.eq(filepath),
+        ))
         .execute(conn);
-    let updated_ep: Episode = episodes.find(episode.id).first(conn).unwrap_or_else(|_| panic!("aaaaa"));
+    let updated_ep: Episode = episodes
+        .find(episode.id)
+        .first(conn)
+        .unwrap_or_else(|_| panic!("aaaaa"));
     return updated_ep;
 }
 
