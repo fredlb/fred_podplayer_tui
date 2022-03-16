@@ -132,7 +132,7 @@ async fn run_app<B: Backend>(
                     },
                     Event::Key(KeyEvent {
                         modifiers: KeyModifiers::NONE,
-                        code: KeyCode::Esc,
+                        code: KeyCode::Char(' '),
                     }) => app.toggle_playback(),
                     Event::Key(KeyEvent {
                         modifiers: KeyModifiers::NONE,
@@ -310,30 +310,26 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         }
         let input1 = Paragraph::new(app.input_pod_name.as_ref())
             .style(Style::default())
-            .block(Block::default().borders(Borders::ALL).title("Name")).scroll((0, name_scroll_offset));
+            .block(Block::default().borders(Borders::ALL).title("Name"))
+            .scroll((0, name_scroll_offset));
         let input2 = Paragraph::new(app.input_pod_url.as_ref())
             .style(Style::default())
-            .block(Block::default().borders(Borders::ALL).title("URL")).scroll((0, url_scroll_offset));
+            .block(Block::default().borders(Borders::ALL).title("URL"))
+            .scroll((0, url_scroll_offset));
         match app.input_field {
             InputField::Name => {
                 let mut cursor_pos = app.input_pod_name.width() as u16 + 1;
                 if cursor_pos >= name_input_width - 2 {
                     cursor_pos = name_input_width - 2;
                 }
-                f.set_cursor(
-                    input_chunks[0].x + cursor_pos,
-                    input_chunks[0].y + 1,
-                );
+                f.set_cursor(input_chunks[0].x + cursor_pos, input_chunks[0].y + 1);
             }
             InputField::Url => {
                 let mut cursor_pos = app.input_pod_url.width() as u16 + 1;
                 if cursor_pos >= url_input_width - 2 {
                     cursor_pos = url_input_width - 2;
                 }
-                f.set_cursor(
-                    input_chunks[1].x + cursor_pos,
-                    input_chunks[1].y + 1,
-                );
+                f.set_cursor(input_chunks[1].x + cursor_pos, input_chunks[1].y + 1);
             }
         }
         f.render_widget(Clear, area2); //this clears out the background
