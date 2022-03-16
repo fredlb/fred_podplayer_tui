@@ -293,36 +293,51 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     if let InputMode::Editing = app.input_mode {
         let block = Block::default().title("New pod").borders(Borders::ALL);
         let area = centered_rect(80, 25, size);
-        let input1 = Paragraph::new(app.input_pod_name.as_ref())
-            .style(Style::default())
-            .block(Block::default().borders(Borders::ALL).title("Name"));
-        let input2 = Paragraph::new(app.input_pod_url.as_ref())
-            .style(Style::default())
-            .block(Block::default().borders(Borders::ALL).title("URL"));
+        let area2 = centered_rect(90, 35, size);
         let input_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)].as_ref())
             .split(area);
-        // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
+        let name_input_width = input_chunks[0].width;
+        let url_input_width = input_chunks[1].width;
+        let mut name_scroll_offset = 0;
+        let mut url_scroll_offset = 0;
+        if app.input_pod_name.width() as u16 >= name_input_width - 2 {
+            name_scroll_offset = app.input_pod_name.width() as u16 - (name_input_width - 2);
+        }
+        if app.input_pod_url.width() as u16 >= name_input_width - 2 {
+            url_scroll_offset = app.input_pod_url.width() as u16 - (url_input_width - 2);
+        }
+        let input1 = Paragraph::new(app.input_pod_name.as_ref())
+            .style(Style::default())
+            .block(Block::default().borders(Borders::ALL).title("Name")).scroll((0, name_scroll_offset));
+        let input2 = Paragraph::new(app.input_pod_url.as_ref())
+            .style(Style::default())
+            .block(Block::default().borders(Borders::ALL).title("URL")).scroll((0, url_scroll_offset));
         match app.input_field {
             InputField::Name => {
+                let mut cursor_pos = app.input_pod_name.width() as u16 + 1;
+                if cursor_pos >= name_input_width - 2 {
+                    cursor_pos = name_input_width - 2;
+                }
                 f.set_cursor(
-                    // Put cursor past the end of the input text
-                    input_chunks[0].x + app.input_pod_name.width() as u16 + 1,
-                    // Move one line down, from the border to the input line
+                    input_chunks[0].x + cursor_pos,
                     input_chunks[0].y + 1,
                 );
             }
             InputField::Url => {
+                let mut cursor_pos = app.input_pod_url.width() as u16 + 1;
+                if cursor_pos >= url_input_width - 2 {
+                    cursor_pos = url_input_width - 2;
+                }
                 f.set_cursor(
-                    // Put cursor past the end of the input text
-                    input_chunks[1].x + app.input_pod_url.width() as u16 + 1,
-                    // Move one line down, from the border to the input line
+                    input_chunks[1].x + cursor_pos,
                     input_chunks[1].y + 1,
                 );
             }
         }
-        f.render_widget(Clear, area); //this clears out the background
+        f.render_widget(Clear, area2); //this clears out the background
+        f.render_widget(block, area2);
         f.render_widget(input1, input_chunks[0]);
         f.render_widget(input2, input_chunks[1]);
     }

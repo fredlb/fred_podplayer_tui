@@ -3,7 +3,8 @@ extern crate tui;
 
 use crate::db::models::{Episode, Pod};
 use crate::db::{
-    establish_connection, get_episode, get_episodes_for_pod, get_pod, set_timestamp_on_episode, create_pod, get_pods,
+    create_pod, establish_connection, get_episode, get_episodes_for_pod, get_pod, get_pods,
+    set_timestamp_on_episode,
 };
 use crate::{network::IoEvent, player::Player};
 use kira::sound::static_sound::PlaybackState;
