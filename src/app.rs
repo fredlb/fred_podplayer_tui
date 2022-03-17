@@ -122,6 +122,12 @@ impl App {
         self.episodes = Some(StatefulList::with_items(eps));
     }
 
+    pub fn refresh_pod(&mut self) {
+        if let Some(index) = self.pods.state.selected() {
+            return self.dispatch(IoEvent::GetPodUpdates(self.pods.items[index].clone()));
+        }
+    }
+
     pub fn back(&mut self) {
         self.navigation_stack = NavigationStack::Main;
     }

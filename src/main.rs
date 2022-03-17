@@ -136,6 +136,10 @@ async fn run_app<B: Backend>(
                     }) => app.toggle_playback(),
                     Event::Key(KeyEvent {
                         modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Char('r'),
+                    }) => app.refresh_pod(),
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
                         code: KeyCode::Char('o'),
                     }) => app.player.jump_forward_10s(),
                     Event::Key(KeyEvent {

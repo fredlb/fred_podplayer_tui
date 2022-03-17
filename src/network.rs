@@ -17,7 +17,6 @@ use symphonia::core::formats::FormatOptions;
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
-use symphonia::core::units::{Time, TimeBase};
 
 error_chain! {
      foreign_links {
@@ -46,7 +45,9 @@ impl<'a> Network<'a> {
             IoEvent::GetPodEpisodes(pod) => {
                 self.download_pod_and_episodes(pod).await;
             }
-            IoEvent::GetPodUpdates(pod) => {}
+            IoEvent::GetPodUpdates(pod) => {
+                self.download_pod_updates(pod).await;
+            }
             IoEvent::DownloadEpisodeAudio(episode) => {
                 let _ = self.download_episode_audio(episode).await;
             }
@@ -57,7 +58,6 @@ impl<'a> Network<'a> {
     }
 
     async fn download_pod_and_episodes(&mut self, pod: Pod) {
-        // let result = reqwest::get(&pod.url).await;
         let client = reqwest::Client::new();
         let res = client
             .get(&pod.url)
@@ -94,6 +94,9 @@ impl<'a> Network<'a> {
             },
             Err(_e) => {}
         }
+    }
+
+    async fn download_pod_updates(&mut self, pod: Pod) {
     }
 
     async fn download_episode_audio(&mut self, episode: Episode) -> Result<()> {

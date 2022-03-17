@@ -40,26 +40,12 @@ pub fn create_pod(conn: &SqliteConnection, title: &str, url: &str) -> usize {
         .expect("error saving pod")
 }
 
-pub fn delete_pod(conn: &SqliteConnection, title_to_delete: &str) {
-    use schema::pods::dsl::*;
-    let _ = diesel::delete(pods.filter(title.like(format!("%{}%", title_to_delete))))
-        .execute(conn)
-        .expect(format!("failed to delete pod(s): {}", title_to_delete).as_str());
-}
-
 pub fn mark_pod_as_downloaded(conn: &SqliteConnection, pod_id: i32) {
     use schema::pods;
     use schema::pods::dsl::*;
     let _ = diesel::update(pods.find(pod_id))
         .set(pods::downloaded.eq(true))
         .execute(conn);
-}
-
-pub fn get_episodes(conn: &SqliteConnection) -> Vec<Episode> {
-    use schema::episodes::dsl::episodes;
-    episodes
-        .load::<Episode>(conn)
-        .expect("failed to load episodes")
 }
 
 pub fn create_episode(
