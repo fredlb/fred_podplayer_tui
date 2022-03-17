@@ -235,8 +235,13 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let mut episodes_items = Vec::<ListItem>::new();
     if let Some(data) = &app.episodes {
         for ep in data.items.iter() {
-            let text = vec![Spans::from(String::from(&ep.title))];
-            episodes_items.push(ListItem::new(text).style(Style::default().fg(Color::White)));
+            let text = vec![Spans::from(format!("{}", &ep.title))];
+            episodes_items.push(ListItem::new(text).style(
+                    match &ep.downloaded {
+                        false => Style::default().fg(Color::White),
+                        true => Style::default().fg(Color::Green),
+                    }
+                ));
         }
     };
 
@@ -290,13 +295,14 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
             }
         }
     }
+
     if let InputMode::Editing = app.input_mode {
         let block = Block::default().title("New pod").borders(Borders::ALL);
         let area = centered_rect(80, 25, size);
         let area2 = centered_rect(90, 35, size);
         let input_chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)].as_ref())
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
             .split(area);
         let name_input_width = input_chunks[0].width;
         let url_input_width = input_chunks[1].width;
