@@ -16,5 +16,6 @@ CREATE TABLE episodes (
     audio_filepath VARCHAR,
     downloaded BOOLEAN NOT NULL DEFAULT FALSE,
     played BOOLEAN NOT NULL DEFAULT FALSE,
-    timestamp REAL NOT NULL DEFAULT 0.0
+    timestamp REAL NOT NULL DEFAULT 0.0,
+    duration INTEGER
 );

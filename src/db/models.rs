@@ -31,6 +31,7 @@ pub struct Episode {
     pub downloaded: bool,
     pub played: bool,
     pub timestamp: f32,
+    pub duration: Option<i32>,
 }
 
 #[derive(Insertable)]
@@ -46,4 +47,5 @@ pub struct NewEpisode<'a> {
     pub downloaded: bool,
     pub played: bool,
     pub timestamp: f32,
+    pub duration: Option<i32>,
 }

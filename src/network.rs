@@ -1,16 +1,23 @@
 extern crate rss;
-use reqwest::header::USER_AGENT;
 use crate::app::App;
 use crate::db::models::{Episode, Pod};
 use crate::db::{
     create_episode, establish_connection, mark_episode_as_downloaded, mark_pod_as_downloaded,
 };
+use reqwest::header::USER_AGENT;
 
 use error_chain::error_chain;
 use std::fs::{create_dir_all, File};
 use std::io::Write;
+use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+use symphonia::core::formats::FormatOptions;
+use symphonia::core::io::MediaSourceStream;
+use symphonia::core::meta::MetadataOptions;
+use symphonia::core::probe::Hint;
+use symphonia::core::units::{Time, TimeBase};
 
 error_chain! {
      foreign_links {
@@ -106,11 +113,50 @@ impl<'a> Network<'a> {
         let content = result.bytes().await?;
         create_dir_all("./data")?;
         dest.write_all(&content)?;
+        let duration = self.read_metadata_from_file(&filename);
         let conn = establish_connection();
-        let updated_ep = mark_episode_as_downloaded(&conn, &episode, &filename);
+        let updated_ep = mark_episode_as_downloaded(&conn, &episode, &filename, duration as i32);
         let mut app = self.app.lock().await;
         app.player.selected_track = Some(updated_ep);
         app.player.play();
         Ok(())
+    }
+
+    fn read_metadata_from_file(&mut self, filepath: &String) -> u64 {
+        let mut hint = Hint::new();
+        let source = {
+            let path = Path::new(filepath);
+
+            if let Some(extension) = path.extension() {
+                if let Some(extension_str) = extension.to_str() {
+                    hint.with_extension(extension_str);
+                }
+            }
+
+            Box::new(File::open(path).unwrap())
+        };
+        let mss = MediaSourceStream::new(source, Default::default());
+        let metadata_opts: MetadataOptions = Default::default();
+        let format_opts = FormatOptions {
+            enable_gapless: false,
+            ..Default::default()
+        };
+        match symphonia::default::get_probe().format(&hint, mss, &format_opts, &metadata_opts) {
+            Ok(probed) => {
+                let params = &probed.format.default_track().unwrap().codec_params;
+
+                if let Some(n_frames) = params.n_frames {
+                    if let Some(tb) = params.time_base {
+                        let time = tb.calc_time(n_frames);
+                        return time.seconds;
+                    } else {
+                        return 0;
+                    }
+                } else {
+                    return 0;
+                }
+            }
+            Err(_) => panic!("could not probe audio for metadata"),
+        }
     }
 }

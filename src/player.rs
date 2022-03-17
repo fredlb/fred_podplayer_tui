@@ -7,14 +7,7 @@ use kira::{
     },
 };
 
-use std::fs::File;
-use std::path::Path;
-
-use symphonia::core::formats::FormatOptions;
-use symphonia::core::io::MediaSourceStream;
-use symphonia::core::meta::MetadataOptions;
-use symphonia::core::probe::Hint;
-use symphonia::core::units::{Time, TimeBase};
+use symphonia::core::units::Time;
 
 use crate::db::models::Episode;
 
@@ -22,7 +15,6 @@ pub struct Player {
     manager: AudioManager,
     pub selected_track: Option<Episode>,
     handler: Option<<StreamingSoundData as SoundData>::Handle>,
-    pub duration_str: String,
 }
 
 impl Player {
@@ -32,7 +24,6 @@ impl Player {
             manager,
             selected_track: None,
             handler: None,
-            duration_str: String::from(""),
         }
     }
 
@@ -41,41 +32,7 @@ impl Player {
             if let Some(handler) = &mut self.handler {
                 let _ = handler.stop(kira::tween::Tween::default());
             }
-            // Create a hint to help the format registry guess what format reader is appropriate.
-            let mut hint = Hint::new();
 
-            // If the path string is '-' then read from standard input.
-            let source = {
-                // Othwerise, get a Path from the path string.
-                let path = Path::new(track.audio_filepath.as_ref().unwrap());
-
-                // Provide the file extension as a hint.
-                if let Some(extension) = path.extension() {
-                    if let Some(extension_str) = extension.to_str() {
-                        hint.with_extension(extension_str);
-                    }
-                }
-
-                Box::new(File::open(path).unwrap())
-            };
-            let mss = MediaSourceStream::new(source, Default::default());
-            let metadata_opts: MetadataOptions = Default::default();
-            let format_opts = FormatOptions {
-                enable_gapless: false,
-                ..Default::default()
-            };
-            match symphonia::default::get_probe().format(&hint, mss, &format_opts, &metadata_opts) {
-                Ok(probed) => {
-                    let params = &probed.format.default_track().unwrap().codec_params;
-
-                    if let Some(n_frames) = params.n_frames {
-                        if let Some(tb) = params.time_base {
-                            self.duration_str = fmt_time(n_frames, tb);
-                        }
-                    }
-                }
-                Err(_) => panic!("could not probe audio for metadata"),
-            }
             let sound =
                 StreamingSoundData::from_file(track.audio_filepath.as_ref().unwrap(), StreamingSoundSettings::default())
                     .unwrap();
@@ -112,7 +69,7 @@ impl Player {
 
     pub fn jump_forward_10s(&mut self) {
         if let Some(handler) = &mut self.handler {
-            handler.seek_by(10.0).unwrap();
+            handler.seek_by(100.0).unwrap();
         }
     }
 
@@ -131,22 +88,19 @@ impl Player {
     pub fn get_progress(&mut self) -> String {
         if let Some(handler) = &mut self.handler {
             let pos = Time::from(handler.position());
-            let hours = pos.seconds / (60 * 60);
-            let mins = (pos.seconds % (60 * 60)) / 60;
-            let secs = (pos.seconds % 60) as u32;
-
-            return format!("{}:{:0>2}:{:0>2}", hours, mins, secs);
+            let cur_dur = self.fmt_time(pos.seconds);
+            let dur = self.selected_track.as_ref().unwrap().duration.unwrap();
+            let tot_dur = self.fmt_time(dur as u64);
+            return format!("{} / {}", cur_dur, tot_dur);
         }
         return String::from("");
     }
-}
 
-fn fmt_time(ts: u64, tb: TimeBase) -> String {
-    let time = tb.calc_time(ts);
+    fn fmt_time(&mut self, secs: u64) -> String {
+        let hours = secs / (60 * 60);
+        let mins = (secs % (60 * 60)) / 60;
+        let secs = (secs % 60) as u32;
 
-    let hours = time.seconds / (60 * 60);
-    let mins = (time.seconds % (60 * 60)) / 60;
-    let secs = (time.seconds % 60) as u32;
-
-    format!("{}:{:0>2}:{:0>2}", hours, mins, secs)
+        return format!("{}:{:0>2}:{:0>2}", hours, mins, secs);
+    }
 }

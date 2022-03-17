@@ -84,6 +84,7 @@ pub fn create_episode(
         audio_filepath: None,
         played: false,
         timestamp: 0.0,
+        duration: None,
     };
 
     diesel::insert_into(episodes::table)
@@ -114,6 +115,7 @@ pub fn mark_episode_as_downloaded(
     conn: &SqliteConnection,
     episode: &Episode,
     filepath: &String,
+    ep_duration: i32,
 ) -> Episode {
     use schema::episodes;
     use schema::episodes::dsl::*;
@@ -121,6 +123,7 @@ pub fn mark_episode_as_downloaded(
         .set((
             episodes::downloaded.eq(true),
             episodes::audio_filepath.eq(filepath),
+            episodes::duration.eq(ep_duration),
         ))
         .execute(conn);
     let updated_ep: Episode = episodes

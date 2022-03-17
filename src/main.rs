@@ -235,7 +235,17 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let mut episodes_items = Vec::<ListItem>::new();
     if let Some(data) = &app.episodes {
         for ep in data.items.iter() {
-            let text = vec![Spans::from(format!("{}", &ep.title))];
+            let mut icon = String::from(" ");
+            if let Some(duration) = ep.duration {
+                let progress_percent = ep.timestamp / duration as f32;
+                icon = match progress_percent {
+                    x if (0.0..0.35).contains(&x) => String::from("◔"),
+                    x if (0.35..0.65).contains(&x) => String::from("◑"),
+                    x if (0.65..0.90).contains(&x) => String::from("◕"),
+                    _ => String::from("●"),
+                }
+            } 
+            let text = vec![Spans::from(format!("{} {}", icon, &ep.title))];
             episodes_items.push(ListItem::new(text).style(
                     match &ep.downloaded {
                         false => Style::default().fg(Color::White),
@@ -259,15 +269,12 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         )
         .highlight_symbol(">> ");
 
-    let cur_progress = &app.player.get_progress();
+    let progress = &app.player.get_progress();
     let mut player_spans: Vec<Spans> = Vec::new();
     let mut player_title = String::from("Player");
     match &app.player.selected_track {
         Some(track) => {
-            player_spans.push(Spans::from(Span::from(format!(
-                "{} / {}",
-                cur_progress, &app.player.duration_str
-            ))));
+            player_spans.push(Spans::from(Span::from(progress.clone())));
             player_title = track.title.clone();
         }
         None => {}

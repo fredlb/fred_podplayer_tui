@@ -11,6 +11,7 @@ table! {
         downloaded -> Bool,
         played -> Bool,
         timestamp -> Float,
+        duration -> Nullable<Integer>,
     }
 }
 
