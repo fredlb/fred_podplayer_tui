@@ -53,6 +53,7 @@ impl<T> StatefulList<T> {
         };
         self.state.select(Some(i));
     }
+
 }
 
 pub enum NavigationStack {
@@ -148,11 +149,12 @@ impl App {
     pub fn save_timestamp(&mut self) {
         if let Some(selected_track) = &self.player.selected_track {
             let conn = establish_connection();
-            set_timestamp_on_episode(
+            let updated_ep = set_timestamp_on_episode(
                 &conn,
                 selected_track.id.clone(),
                 self.player.get_current_timestamp(),
             );
+            self.player.selected_track = Some(updated_ep.clone());
         }
     }
 
@@ -189,6 +191,18 @@ impl App {
         }
     }
 
+    pub fn play_episode(&mut self, episode: Episode) {
+        self.player.selected_track = Some(episode.clone());
+        self.player.play();
+        //FIXME: This is shitty because the index can have changed once this is called which means
+        //it will modify the wrong list item
+        if let Some(data) = &mut self.episodes {
+            if let Some(index) = data.state.selected() {
+                data.items[index] = episode.clone();
+            }
+        }
+    }
+
     pub fn create_pod(&mut self) {
         //TODO: Validate input
         //1. Validate input
@@ -200,5 +214,7 @@ impl App {
         self.pods = StatefulList::with_items(pods);
         //4. Toggle editing mode to normal
         self.input_mode = InputMode::Normal;
+        self.input_pod_name = String::from("");
+        self.input_pod_url = String::from("");
     }
 }

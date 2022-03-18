@@ -122,10 +122,14 @@ pub fn mark_episode_as_downloaded(
     return updated_ep;
 }
 
-pub fn set_timestamp_on_episode(conn: &SqliteConnection, episode_id: i32, ts: f32) {
+pub fn set_timestamp_on_episode(conn: &SqliteConnection, episode_id: i32, ts: f32) -> Episode {
     use schema::episodes;
     use schema::episodes::dsl::*;
     let _ = diesel::update(episodes.find(episode_id))
         .set(episodes::timestamp.eq(ts))
         .execute(conn);
+    return episodes
+        .find(episode_id)
+        .first(conn)
+        .unwrap_or_else(|_| panic!("aaaaa"));
 }

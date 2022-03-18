@@ -173,8 +173,7 @@ impl<'a> Network<'a> {
         let conn = establish_connection();
         let updated_ep = mark_episode_as_downloaded(&conn, &episode, &filename, duration as i32);
         let mut app = self.app.lock().await;
-        app.player.selected_track = Some(updated_ep);
-        app.player.play();
+        app.play_episode(updated_ep);
         Ok(())
     }
 
