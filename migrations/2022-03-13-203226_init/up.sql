@@ -17,5 +17,6 @@ CREATE TABLE episodes (
     downloaded BOOLEAN NOT NULL DEFAULT FALSE,
     played BOOLEAN NOT NULL DEFAULT FALSE,
     timestamp REAL NOT NULL DEFAULT 0.0,
+    pub_timestamp INTEGER NOT NULL,
     duration INTEGER
 );

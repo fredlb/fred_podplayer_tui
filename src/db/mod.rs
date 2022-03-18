@@ -56,6 +56,7 @@ pub fn create_episode(
     url: &str,
     audio_url: &str,
     description: &str,
+    pub_timestamp: i32,
     downloaded: bool,
 ) -> usize {
     use schema::episodes;
@@ -70,6 +71,7 @@ pub fn create_episode(
         audio_filepath: None,
         played: false,
         timestamp: 0.0,
+        pub_timestamp,
         duration: None,
     };
 
@@ -83,6 +85,7 @@ pub fn get_episodes_for_pod(conn: &SqliteConnection, pod_id_x: i32) -> Vec<Episo
     use schema::episodes::dsl::*;
     let eps = episodes
         .filter(pod_id.eq(pod_id_x))
+        .order(pub_timestamp.desc())
         .load::<Episode>(conn)
         .expect("failed to fetch episodes");
     return eps;

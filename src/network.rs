@@ -2,8 +2,10 @@ extern crate rss;
 use crate::app::App;
 use crate::db::models::{Episode, Pod};
 use crate::db::{
-    create_episode, establish_connection, mark_episode_as_downloaded, mark_pod_as_downloaded,
+    create_episode, establish_connection, mark_episode_as_downloaded, mark_pod_as_downloaded, get_episodes_for_pod,
 };
+
+use chrono::DateTime;
 use reqwest::header::USER_AGENT;
 
 use error_chain::error_chain;
@@ -72,6 +74,8 @@ impl<'a> Network<'a> {
                     match channel {
                         Ok(chan) => {
                             for item in chan.items().iter() {
+                                let dt = item.pub_date().unwrap();
+                                let dt2 = DateTime::parse_from_rfc2822(dt).unwrap();
                                 create_episode(
                                     &conn,
                                     item.guid().unwrap().value(),
@@ -80,6 +84,7 @@ impl<'a> Network<'a> {
                                     item.link().unwrap_or(""),
                                     item.enclosure().unwrap().url(),
                                     "",
+                                    dt2.timestamp() as i32,
                                     false,
                                 );
                             }
@@ -97,6 +102,54 @@ impl<'a> Network<'a> {
     }
 
     async fn download_pod_updates(&mut self, pod: Pod) {
+        let conn = establish_connection();
+        let existing_episodes = get_episodes_for_pod(&conn, pod.id);
+        let uids: Vec<String> = existing_episodes.iter()
+            .map(|ep| {
+                ep.uid.clone()
+            }).collect();
+
+        let client = reqwest::Client::new();
+        let res = client
+            .get(&pod.url)
+            .header(USER_AGENT, "Mah podplayah")
+            .send()
+            .await;
+        match res {
+            Ok(result) => match result.bytes().await {
+                Ok(result) => {
+                    let channel = rss::Channel::read_from(&result[..]);
+                    let conn = establish_connection();
+                    match channel {
+                        Ok(chan) => {
+                            for item in chan.items().iter() {
+                                if !uids.contains(&item.guid().unwrap().value().to_string()) {
+                                    let dt = item.pub_date().unwrap();
+                                    let dt2 = DateTime::parse_from_rfc2822(dt).unwrap();
+                                    create_episode(
+                                        &conn,
+                                        item.guid().unwrap().value(),
+                                        pod.id,
+                                        item.title().unwrap(),
+                                        item.link().unwrap_or(""),
+                                        item.enclosure().unwrap().url(),
+                                        "",
+                                        dt2.timestamp() as i32,
+                                        false,
+                                    );
+                                }
+                            }
+                        }
+                        Err(err) => panic!("failed to download episodes: {}", err),
+                    }
+                    let mut app = self.app.lock().await;
+                    app.set_active_pod(pod.id);
+                }
+                Err(_e) => {}
+            },
+            Err(_e) => {}
+        }
+
     }
 
     async fn download_episode_audio(&mut self, episode: Episode) -> Result<()> {

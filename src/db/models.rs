@@ -31,6 +31,7 @@ pub struct Episode {
     pub downloaded: bool,
     pub played: bool,
     pub timestamp: f32,
+    pub pub_timestamp: i32,
     pub duration: Option<i32>,
 }
 
@@ -47,5 +48,6 @@ pub struct NewEpisode<'a> {
     pub downloaded: bool,
     pub played: bool,
     pub timestamp: f32,
+    pub pub_timestamp: i32,
     pub duration: Option<i32>,
 }
