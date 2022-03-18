@@ -155,6 +155,12 @@ impl App {
                 self.player.get_current_timestamp(),
             );
             self.player.selected_track = Some(updated_ep.clone());
+            if let Some(data) = &mut self.episodes {
+                let index = data.items.iter().position(|x| x.id == updated_ep.id);
+                if let Some(i) = index {
+                    data.items[i] = updated_ep.clone();
+                }
+            }
         }
     }
 
@@ -194,11 +200,10 @@ impl App {
     pub fn play_episode(&mut self, episode: Episode) {
         self.player.selected_track = Some(episode.clone());
         self.player.play();
-        //FIXME: This is shitty because the index can have changed once this is called which means
-        //it will modify the wrong list item
         if let Some(data) = &mut self.episodes {
-            if let Some(index) = data.state.selected() {
-                data.items[index] = episode.clone();
+            let index = data.items.iter().position(|x| x.id == episode.id);
+            if let Some(i) = index {
+                data.items[i] = episode.clone();
             }
         }
     }
