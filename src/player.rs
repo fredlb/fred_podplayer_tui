@@ -4,7 +4,9 @@ use kira::{
         static_sound::PlaybackState,
         streaming::{StreamingSoundData, StreamingSoundSettings},
         SoundData,
-    }, Volume, tween::Tween,
+    },
+    tween::Tween,
+    Volume,
 };
 
 use symphonia::core::units::Time;
@@ -33,12 +35,14 @@ impl Player {
                 let _ = handler.stop(kira::tween::Tween::default());
             }
 
-            let sound =
-                StreamingSoundData::from_file(track.audio_filepath.as_ref().unwrap(), StreamingSoundSettings::default())
-                    .unwrap();
+            let sound = StreamingSoundData::from_file(
+                track.audio_filepath.as_ref().unwrap(),
+                StreamingSoundSettings::default(),
+            )
+            .unwrap();
             self.handler = Some(self.manager.play(sound).unwrap());
             if let Some(handler) = &mut self.handler {
-                handler.set_volume(Volume::Amplitude(0.5), Tween::default());
+                let _ = handler.set_volume(Volume::Amplitude(0.75), Tween::default());
             }
         }
     }
@@ -85,18 +89,6 @@ impl Player {
     pub fn seek(&mut self, ts: f32) {
         if let Some(handler) = &mut self.handler {
             handler.seek_to(ts as f64).unwrap();
-        }
-    }
-
-    pub fn increase_volume(&mut self) {
-        if let Some(handler) = &mut self.handler {
-            handler.set_volume(Volume::Amplitude(1.0), Tween::default());
-        }
-    }
-
-    pub fn decrease_volume(&mut self) {
-        if let Some(handler) = &mut self.handler {
-            handler.set_volume(Volume::Amplitude(0.5), Tween::default());
         }
     }
 

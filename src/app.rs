@@ -53,7 +53,6 @@ impl<T> StatefulList<T> {
         };
         self.state.select(Some(i));
     }
-
 }
 
 pub enum NavigationStack {

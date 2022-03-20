@@ -248,14 +248,12 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
                     x if (0.65..0.90).contains(&x) => String::from("◕"),
                     _ => String::from("●"),
                 }
-            } 
+            }
             let text = vec![Spans::from(format!("{} {}", icon, &ep.title))];
-            episodes_items.push(ListItem::new(text).style(
-                    match &ep.downloaded {
-                        false => Style::default().fg(Color::White),
-                        true => Style::default().fg(Color::Green),
-                    }
-                ));
+            episodes_items.push(ListItem::new(text).style(match &ep.downloaded {
+                false => Style::default().fg(Color::White),
+                true => Style::default().fg(Color::Green),
+            }));
         }
     };
 

@@ -2,7 +2,8 @@ extern crate rss;
 use crate::app::App;
 use crate::db::models::{Episode, Pod};
 use crate::db::{
-    create_episode, establish_connection, mark_episode_as_downloaded, mark_pod_as_downloaded, get_episodes_for_pod,
+    create_episode, establish_connection, get_episodes_for_pod, mark_episode_as_downloaded,
+    mark_pod_as_downloaded,
 };
 
 use chrono::DateTime;
@@ -104,10 +105,7 @@ impl<'a> Network<'a> {
     async fn download_pod_updates(&mut self, pod: Pod) {
         let conn = establish_connection();
         let existing_episodes = get_episodes_for_pod(&conn, pod.id);
-        let uids: Vec<String> = existing_episodes.iter()
-            .map(|ep| {
-                ep.uid.clone()
-            }).collect();
+        let uids: Vec<String> = existing_episodes.iter().map(|ep| ep.uid.clone()).collect();
 
         let client = reqwest::Client::new();
         let res = client
@@ -149,7 +147,6 @@ impl<'a> Network<'a> {
             },
             Err(_e) => {}
         }
-
     }
 
     async fn download_episode_audio(&mut self, episode: Episode) -> Result<()> {

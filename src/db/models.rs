@@ -1,7 +1,7 @@
-use super::schema::{pods, episodes};
+use super::schema::{episodes, pods};
 
 #[derive(Identifiable, Queryable, PartialEq, Debug, Clone)]
-#[table_name="pods"]
+#[table_name = "pods"]
 pub struct Pod {
     pub id: i32,
     pub title: String,
@@ -10,7 +10,7 @@ pub struct Pod {
 }
 
 #[derive(Insertable)]
-#[table_name="pods"]
+#[table_name = "pods"]
 pub struct NewPod<'a> {
     pub title: &'a str,
     pub url: &'a str,
@@ -18,7 +18,7 @@ pub struct NewPod<'a> {
 
 #[derive(Clone, Queryable, Identifiable, Associations, PartialEq, Debug)]
 #[belongs_to(Pod)]
-#[table_name="episodes"]
+#[table_name = "episodes"]
 pub struct Episode {
     pub id: i32,
     pub uid: String,
@@ -36,7 +36,7 @@ pub struct Episode {
 }
 
 #[derive(Insertable)]
-#[table_name="episodes"]
+#[table_name = "episodes"]
 pub struct NewEpisode<'a> {
     pub uid: &'a str,
     pub pod_id: i32,
