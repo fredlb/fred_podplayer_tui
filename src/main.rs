@@ -286,7 +286,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     }
     let player = Paragraph::new(player_spans)
         .block(Block::default().title(player_title).borders(Borders::ALL))
-        .style(Style::default().fg(Color::White).bg(Color::Black));
+        .style(Style::default().fg(Color::White));
 
     f.render_widget(player, main_chunks[1]);
 
