@@ -7,7 +7,7 @@ use crate::db::{
     set_timestamp_on_episode,
 };
 use crate::{network::IoEvent, player::Player};
-use kira::sound::static_sound::PlaybackState;
+use kira::sound::PlaybackState;
 use tui::widgets::ListState;
 
 use std::sync::mpsc::Sender;

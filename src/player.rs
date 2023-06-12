@@ -1,13 +1,14 @@
 use kira::{
     manager::{backend::cpal::CpalBackend, AudioManager, AudioManagerSettings},
     sound::{
-        static_sound::PlaybackState,
         streaming::{StreamingSoundData, StreamingSoundSettings},
         SoundData,
+        PlaybackState,
     },
     tween::Tween,
     Volume,
 };
+use kira::sound::FromFileError;
 
 use symphonia::core::units::Time;
 
@@ -16,7 +17,7 @@ use crate::db::models::Episode;
 pub struct Player {
     manager: AudioManager,
     pub selected_track: Option<Episode>,
-    handler: Option<<StreamingSoundData as SoundData>::Handle>,
+    handler: Option<<StreamingSoundData<FromFileError> as SoundData>::Handle>,
 }
 
 impl Player {
