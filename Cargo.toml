@@ -17,6 +17,7 @@ serde_json = "1.0"
 error-chain = "*"
 kira = "0.8.3"
 symphonia = { version = "0.5", features = [ "aac", "alac", "mp3", "isomp4" ] }
+libsqlite3-sys = { version = ">=0.8.0, <0.23.0", optional = true, features = ["bundled"] }
 diesel = { version = "1.4.8", features = ["sqlite"] }
 dotenv = "0.10"
 unicode-width = "0.1"

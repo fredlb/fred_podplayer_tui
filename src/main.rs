@@ -278,7 +278,7 @@ fn render_episodes<B: Backend>(
     f.render_stateful_widget(episodes_list, main_chunks[0], &mut episodes.state.clone());
 }
 
-fn render_player<B: Backend>(f: &mut Frame<B>, player: &mut App, main_chunks: &[Rect]) {
+fn render_player<B: Backend>(f: &mut Frame<B>, app: &mut App, main_chunks: &[Rect]) {
     let progress = app.player.get_progress();
     let mut player_spans: Vec<Spans> = Vec::new();
     let mut player_title = String::from("Player");
