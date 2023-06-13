@@ -39,6 +39,9 @@ use tui::{
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
     Frame, Terminal,
 };
+use db::models::Episode;
+use crate::app::StatefulList;
+use crate::db::models::Pod;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -203,15 +206,8 @@ async fn run_app<B: Backend>(
     }
 }
 
-fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
-    let size = f.size();
-    let main_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref())
-        .split(f.size());
-
-    let items: Vec<ListItem> = app
-        .pods
+fn render_pods<B: Backend>(f: &mut Frame<B>, pods: &StatefulList<Pod>, main_chunks: &[Rect]) {
+    let items: Vec<ListItem> = pods
         .items
         .iter()
         .map(|i| {
@@ -236,26 +232,30 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         )
         .highlight_symbol(">> ");
 
+    f.render_stateful_widget(pods_items, main_chunks[0], &mut pods.state.clone());
+}
+
+fn render_episodes<B: Backend>(f: &mut Frame<B>, episodes: &StatefulList<Episode>, main_chunks: &[Rect]) {
     let mut episodes_items = Vec::<ListItem>::new();
-    if let Some(data) = &app.episodes {
-        for ep in data.items.iter() {
-            let mut icon = String::from(" ");
-            if let Some(duration) = ep.duration {
-                let progress_percent = ep.timestamp / duration as f32;
-                icon = match progress_percent {
-                    x if (0.0..0.35).contains(&x) => String::from("◔"),
-                    x if (0.35..0.65).contains(&x) => String::from("◑"),
-                    x if (0.65..0.90).contains(&x) => String::from("◕"),
-                    _ => String::from("●"),
-                }
+    for ep in episodes.items.iter() {
+        let mut icon = String::from(" ");
+        if let Some(duration) = ep.duration {
+            let progress_percent = ep.timestamp / duration as f32;
+            icon = match progress_percent {
+                x if (0.0..0.35).contains(&x) => String::from("◔"),
+                x if (0.35..0.65).contains(&x) => String::from("◑"),
+                x if (0.65..0.90).contains(&x) => String::from("◕"),
+                _ => String::from("●"),
             }
-            let text = vec![Spans::from(format!("{} {}", icon, &ep.title))];
-            episodes_items.push(ListItem::new(text).style(match &ep.downloaded {
-                false => Style::default().fg(Color::White),
-                true => Style::default().fg(Color::Green),
-            }));
         }
-    };
+        let text = vec![Spans::from(format!("{} {}", icon, &ep.title))];
+        episodes_items.push(ListItem::new(text).style(match &ep.downloaded {
+            false => Style::default().fg(Color::White),
+            true => Style::default().fg(Color::Green),
+        }));
+    }
+
+    let active_border = Style::default().fg(Color::White);
 
     let episodes_list = List::new(episodes_items)
         .block(
@@ -271,7 +271,11 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         )
         .highlight_symbol(">> ");
 
-    let progress = &app.player.get_progress();
+    f.render_stateful_widget(episodes_list, main_chunks[0], &mut episodes.state.clone());
+}
+
+fn render_player<B: Backend>(f: &mut Frame<B>, player: &mut App, main_chunks: &[Rect]) {
+    let progress = app.player.get_progress();
     let mut player_spans: Vec<Spans> = Vec::new();
     let mut player_title = String::from("Player");
     match &app.player.selected_track {
@@ -289,68 +293,77 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .style(Style::default().fg(Color::White));
 
     f.render_widget(player, main_chunks[1]);
+}
+
+fn render_input<B: Backend>(f: &mut Frame<B>, app: &App, size: Rect) {
+    let area = centered_rect(80, 25, size);
+    let area2 = centered_rect(90, 35, size);
+    let input_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .split(area);
+    let name_input_width = input_chunks[0].width;
+    let url_input_width = input_chunks[1].width;
+    let mut name_scroll_offset = 0;
+    let mut url_scroll_offset = 0;
+    if app.input_pod_name.width() as u16 >= name_input_width - 2 {
+        name_scroll_offset = app.input_pod_name.width() as u16 - (name_input_width - 2);
+    }
+    if app.input_pod_url.width() as u16 >= name_input_width - 2 {
+        url_scroll_offset = app.input_pod_url.width() as u16 - (url_input_width - 2);
+    }
+    let input1 = Paragraph::new(app.input_pod_name.as_ref())
+        .style(Style::default())
+        .block(Block::default().borders(Borders::ALL).title("Name"))
+        .scroll((0, name_scroll_offset));
+    let input2 = Paragraph::new(app.input_pod_url.as_ref())
+        .style(Style::default())
+        .block(Block::default().borders(Borders::ALL).title("URL"))
+        .scroll((0, url_scroll_offset));
+    match app.input_field {
+        InputField::Name => {
+            let mut cursor_pos = app.input_pod_name.width() as u16 + 1;
+            if cursor_pos >= name_input_width - 2 {
+                cursor_pos = name_input_width - 2;
+            }
+            f.set_cursor(input_chunks[0].x + cursor_pos, input_chunks[0].y + 1);
+        }
+        InputField::Url => {
+            let mut cursor_pos = app.input_pod_url.width() as u16 + 1;
+            if cursor_pos >= url_input_width - 2 {
+                cursor_pos = url_input_width - 2;
+            }
+            f.set_cursor(input_chunks[1].x + cursor_pos, input_chunks[1].y + 1);
+        }
+    }
+    f.render_widget(Clear, area2);
+    f.render_widget(Block::default().title("New pod").borders(Borders::ALL), area2);
+    f.render_widget(input1, input_chunks[0]);
+    f.render_widget(input2, input_chunks[1]);
+}
+
+fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
+    let size = f.size();
+    let main_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref())
+        .split(f.size());
 
     match &app.navigation_stack {
         NavigationStack::Main => {
-            f.render_stateful_widget(pods_items, main_chunks[0], &mut app.pods.state.clone());
+            render_pods(f, &app.pods, &main_chunks);
         }
         NavigationStack::Episodes => {
             if let Some(episodes) = &app.episodes {
-                f.render_stateful_widget(
-                    episodes_list,
-                    main_chunks[0],
-                    &mut episodes.state.clone(),
-                );
+                render_episodes(f, episodes, &main_chunks);
             }
         }
     }
 
+    render_player(f, app, &main_chunks);
+
     if let InputMode::Editing = app.input_mode {
-        let block = Block::default().title("New pod").borders(Borders::ALL);
-        let area = centered_rect(80, 25, size);
-        let area2 = centered_rect(90, 35, size);
-        let input_chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-            .split(area);
-        let name_input_width = input_chunks[0].width;
-        let url_input_width = input_chunks[1].width;
-        let mut name_scroll_offset = 0;
-        let mut url_scroll_offset = 0;
-        if app.input_pod_name.width() as u16 >= name_input_width - 2 {
-            name_scroll_offset = app.input_pod_name.width() as u16 - (name_input_width - 2);
-        }
-        if app.input_pod_url.width() as u16 >= name_input_width - 2 {
-            url_scroll_offset = app.input_pod_url.width() as u16 - (url_input_width - 2);
-        }
-        let input1 = Paragraph::new(app.input_pod_name.as_ref())
-            .style(Style::default())
-            .block(Block::default().borders(Borders::ALL).title("Name"))
-            .scroll((0, name_scroll_offset));
-        let input2 = Paragraph::new(app.input_pod_url.as_ref())
-            .style(Style::default())
-            .block(Block::default().borders(Borders::ALL).title("URL"))
-            .scroll((0, url_scroll_offset));
-        match app.input_field {
-            InputField::Name => {
-                let mut cursor_pos = app.input_pod_name.width() as u16 + 1;
-                if cursor_pos >= name_input_width - 2 {
-                    cursor_pos = name_input_width - 2;
-                }
-                f.set_cursor(input_chunks[0].x + cursor_pos, input_chunks[0].y + 1);
-            }
-            InputField::Url => {
-                let mut cursor_pos = app.input_pod_url.width() as u16 + 1;
-                if cursor_pos >= url_input_width - 2 {
-                    cursor_pos = url_input_width - 2;
-                }
-                f.set_cursor(input_chunks[1].x + cursor_pos, input_chunks[1].y + 1);
-            }
-        }
-        f.render_widget(Clear, area2); //this clears out the background
-        f.render_widget(block, area2);
-        f.render_widget(input1, input_chunks[0]);
-        f.render_widget(input2, input_chunks[1]);
+        render_input(f, app, size);
     }
 }
 
