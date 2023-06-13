@@ -25,6 +25,9 @@ use crossterm::{
 };
 use network::{IoEvent, Network};
 
+use crate::app::StatefulList;
+use crate::db::models::Pod;
+use db::models::Episode;
 use std::{
     io,
     sync::Arc,
@@ -39,9 +42,6 @@ use tui::{
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
     Frame, Terminal,
 };
-use db::models::Episode;
-use crate::app::StatefulList;
-use crate::db::models::Pod;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -235,7 +235,11 @@ fn render_pods<B: Backend>(f: &mut Frame<B>, pods: &StatefulList<Pod>, main_chun
     f.render_stateful_widget(pods_items, main_chunks[0], &mut pods.state.clone());
 }
 
-fn render_episodes<B: Backend>(f: &mut Frame<B>, episodes: &StatefulList<Episode>, main_chunks: &[Rect]) {
+fn render_episodes<B: Backend>(
+    f: &mut Frame<B>,
+    episodes: &StatefulList<Episode>,
+    main_chunks: &[Rect],
+) {
     let mut episodes_items = Vec::<ListItem>::new();
     for ep in episodes.items.iter() {
         let mut icon = String::from(" ");
@@ -337,7 +341,10 @@ fn render_input<B: Backend>(f: &mut Frame<B>, app: &App, size: Rect) {
         }
     }
     f.render_widget(Clear, area2);
-    f.render_widget(Block::default().title("New pod").borders(Borders::ALL), area2);
+    f.render_widget(
+        Block::default().title("New pod").borders(Borders::ALL),
+        area2,
+    );
     f.render_widget(input1, input_chunks[0]);
     f.render_widget(input2, input_chunks[1]);
 }
