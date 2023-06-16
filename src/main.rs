@@ -33,6 +33,7 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
+use std::error::Error;
 use tokio::sync::Mutex;
 use tui::{
     backend::{Backend, CrosstermBackend},
@@ -42,6 +43,19 @@ use tui::{
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
     Frame, Terminal,
 };
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
+
+fn run_migrations(connection: &mut impl MigrationHarness<diesel::sqlite::Sqlite>) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+
+    // This will run the necessary migrations.
+    //
+    // See the documentation for `MigrationHarness` for
+    // all available methods.
+    connection.run_pending_migrations(MIGRATIONS)?;
+
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -51,8 +65,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let connection = establish_connection();
-    let pods = get_pods(&connection);
+    let mut connection = establish_connection();
+    run_migrations(&mut connection).unwrap();
+
+    let pods = get_pods(&mut connection);
 
     let player = Player::new();
 

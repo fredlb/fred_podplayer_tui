@@ -117,8 +117,8 @@ impl App {
 
     pub fn set_active_pod(&mut self, id: i32) {
         self.active_pod_id = id;
-        let conn = establish_connection();
-        let eps = get_episodes_for_pod(&conn, id);
+        let mut conn = establish_connection();
+        let eps = get_episodes_for_pod(&mut conn, id);
         self.episodes = Some(StatefulList::with_items(eps));
     }
 
@@ -147,9 +147,9 @@ impl App {
 
     pub fn save_timestamp(&mut self) {
         if let Some(selected_track) = &self.player.selected_track {
-            let conn = establish_connection();
+            let mut conn = establish_connection();
             let updated_ep = set_timestamp_on_episode(
-                &conn,
+                &mut conn,
                 selected_track.id.clone(),
                 self.player.get_current_timestamp(),
             );
@@ -167,13 +167,13 @@ impl App {
         self.navigation_stack = NavigationStack::Episodes;
         if let Some(index) = self.pods.state.selected() {
             let pod = &self.pods.items[index];
-            let conn = establish_connection();
-            let updated_pod = get_pod(&conn, pod.id);
+            let mut conn = establish_connection();
+            let updated_pod = get_pod(&mut conn, pod.id);
             if !updated_pod.downloaded {
                 return self.dispatch(IoEvent::GetPodEpisodes(self.pods.items[index].clone()));
             }
             self.episodes = Some(StatefulList::with_items(get_episodes_for_pod(
-                &conn, pod.id,
+                &mut conn, pod.id,
             )));
         }
     }
@@ -183,8 +183,8 @@ impl App {
             if let Some(index) = data.state.selected() {
                 self.save_timestamp();
                 let ep = &data.items[index];
-                let conn = establish_connection();
-                let updated_ep = get_episode(&conn, ep.id);
+                let mut conn = establish_connection();
+                let updated_ep = get_episode(&mut conn, ep.id);
                 if !updated_ep.downloaded {
                     self.is_downloading = true;
                     return self.dispatch(IoEvent::DownloadEpisodeAudio(data.items[index].clone()));
@@ -211,10 +211,10 @@ impl App {
         //TODO: Validate input
         //1. Validate input
         //2. Create pod in db
-        let conn = establish_connection();
-        let _ = create_pod(&conn, &self.input_pod_name, &self.input_pod_url);
+        let mut conn = establish_connection();
+        let _ = create_pod(&mut conn, &self.input_pod_name, &self.input_pod_url);
         //3. Refresh pod list
-        let pods = get_pods(&conn);
+        let pods = get_pods(&mut conn);
         self.pods = StatefulList::with_items(pods);
         //4. Toggle editing mode to normal
         self.input_mode = InputMode::Normal;

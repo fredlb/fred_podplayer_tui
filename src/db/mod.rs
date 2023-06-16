@@ -16,12 +16,12 @@ pub fn establish_connection() -> SqliteConnection {
     SqliteConnection::establish(&database_url).unwrap_or_else(|_| panic!("failed to connect to db"))
 }
 
-pub fn get_pods(conn: &SqliteConnection) -> Vec<Pod> {
+pub fn get_pods(conn: &mut SqliteConnection) -> Vec<Pod> {
     use schema::pods::dsl::pods;
     pods.load::<Pod>(conn).expect("failed to load pods")
 }
 
-pub fn get_pod(conn: &SqliteConnection, pod_id: i32) -> Pod {
+pub fn get_pod(conn: &mut SqliteConnection, pod_id: i32) -> Pod {
     use schema::pods::dsl::*;
     let pod: Pod = pods
         .find(pod_id)
@@ -30,7 +30,7 @@ pub fn get_pod(conn: &SqliteConnection, pod_id: i32) -> Pod {
     return pod;
 }
 
-pub fn create_pod(conn: &SqliteConnection, title: &str, url: &str) -> usize {
+pub fn create_pod(conn: &mut SqliteConnection, title: &str, url: &str) -> usize {
     use schema::pods;
     let new_pod = NewPod { title, url };
 
@@ -40,7 +40,7 @@ pub fn create_pod(conn: &SqliteConnection, title: &str, url: &str) -> usize {
         .expect("error saving pod")
 }
 
-pub fn mark_pod_as_downloaded(conn: &SqliteConnection, pod_id: i32) {
+pub fn mark_pod_as_downloaded(conn: &mut SqliteConnection, pod_id: i32) {
     use schema::pods;
     use schema::pods::dsl::*;
     let _ = diesel::update(pods.find(pod_id))
@@ -49,7 +49,7 @@ pub fn mark_pod_as_downloaded(conn: &SqliteConnection, pod_id: i32) {
 }
 
 pub fn create_episode(
-    conn: &SqliteConnection,
+    conn: &mut SqliteConnection,
     uid: &str,
     pod_id: i32,
     title: &str,
@@ -81,7 +81,7 @@ pub fn create_episode(
         .expect("error saving episode")
 }
 
-pub fn get_episodes_for_pod(conn: &SqliteConnection, pod_id_x: i32) -> Vec<Episode> {
+pub fn get_episodes_for_pod(conn: &mut SqliteConnection, pod_id_x: i32) -> Vec<Episode> {
     use schema::episodes::dsl::*;
     let eps = episodes
         .filter(pod_id.eq(pod_id_x))
@@ -91,7 +91,7 @@ pub fn get_episodes_for_pod(conn: &SqliteConnection, pod_id_x: i32) -> Vec<Episo
     return eps;
 }
 
-pub fn get_episode(conn: &SqliteConnection, ep_id: i32) -> Episode {
+pub fn get_episode(conn: &mut SqliteConnection, ep_id: i32) -> Episode {
     use schema::episodes::dsl::*;
     let ep: Episode = episodes
         .find(ep_id)
@@ -101,7 +101,7 @@ pub fn get_episode(conn: &SqliteConnection, ep_id: i32) -> Episode {
 }
 
 pub fn mark_episode_as_downloaded(
-    conn: &SqliteConnection,
+    conn: &mut SqliteConnection,
     episode: &Episode,
     filepath: &String,
     ep_duration: i32,
@@ -122,7 +122,7 @@ pub fn mark_episode_as_downloaded(
     return updated_ep;
 }
 
-pub fn set_timestamp_on_episode(conn: &SqliteConnection, episode_id: i32, ts: f32) -> Episode {
+pub fn set_timestamp_on_episode(conn: &mut SqliteConnection, episode_id: i32, ts: f32) -> Episode {
     use schema::episodes;
     use schema::episodes::dsl::*;
     let _ = diesel::update(episodes.find(episode_id))

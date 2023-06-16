@@ -71,14 +71,14 @@ impl<'a> Network<'a> {
             Ok(result) => match result.bytes().await {
                 Ok(result) => {
                     let channel = rss::Channel::read_from(&result[..]);
-                    let conn = establish_connection();
+                    let mut conn = establish_connection();
                     match channel {
                         Ok(chan) => {
                             for item in chan.items().iter() {
                                 let dt = item.pub_date().unwrap();
                                 let dt2 = DateTime::parse_from_rfc2822(dt).unwrap();
                                 create_episode(
-                                    &conn,
+                                    &mut conn,
                                     item.guid().unwrap().value(),
                                     pod.id,
                                     item.title().unwrap(),
@@ -89,7 +89,7 @@ impl<'a> Network<'a> {
                                     false,
                                 );
                             }
-                            mark_pod_as_downloaded(&conn, pod.id);
+                            mark_pod_as_downloaded(&mut conn, pod.id);
                         }
                         Err(err) => panic!("failed to download episodes: {}", err),
                     }
@@ -103,8 +103,8 @@ impl<'a> Network<'a> {
     }
 
     async fn download_pod_updates(&mut self, pod: Pod) {
-        let conn = establish_connection();
-        let existing_episodes = get_episodes_for_pod(&conn, pod.id);
+        let mut conn = establish_connection();
+        let existing_episodes = get_episodes_for_pod(&mut conn, pod.id);
         let uids: Vec<String> = existing_episodes.iter().map(|ep| ep.uid.clone()).collect();
 
         let client = reqwest::Client::new();
@@ -117,7 +117,7 @@ impl<'a> Network<'a> {
             Ok(result) => match result.bytes().await {
                 Ok(result) => {
                     let channel = rss::Channel::read_from(&result[..]);
-                    let conn = establish_connection();
+                    let mut conn = establish_connection();
                     match channel {
                         Ok(chan) => {
                             for item in chan.items().iter() {
@@ -125,7 +125,7 @@ impl<'a> Network<'a> {
                                     let dt = item.pub_date().unwrap();
                                     let dt2 = DateTime::parse_from_rfc2822(dt).unwrap();
                                     create_episode(
-                                        &conn,
+                                        &mut conn,
                                         item.guid().unwrap().value(),
                                         pod.id,
                                         item.title().unwrap(),
@@ -167,8 +167,8 @@ impl<'a> Network<'a> {
         create_dir_all("./data")?;
         dest.write_all(&content)?;
         let duration = self.read_metadata_from_file(&filename);
-        let conn = establish_connection();
-        let updated_ep = mark_episode_as_downloaded(&conn, &episode, &filename, duration as i32);
+        let mut conn = establish_connection();
+        let updated_ep = mark_episode_as_downloaded(&mut conn, &episode, &filename, duration as i32);
         let mut app = self.app.lock().await;
         app.play_episode(updated_ep);
         Ok(())

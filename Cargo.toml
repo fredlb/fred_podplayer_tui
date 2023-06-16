@@ -7,8 +7,8 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.19"
-crossterm = "*"
-tui = "*"
+crossterm = "0.22.1"
+tui = "0.17.0"
 rss = "2.0"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 serde = {version= "1.0.136", features = ["derive"]}
@@ -17,7 +17,8 @@ serde_json = "1.0"
 error-chain = "*"
 kira = "0.8.3"
 symphonia = { version = "0.5", features = [ "aac", "alac", "mp3", "isomp4" ] }
-libsqlite3-sys = { version = ">=0.8.0, <0.23.0", optional = true, features = ["bundled"] }
-diesel = { version = "1.4.8", features = ["sqlite"] }
+libsqlite3-sys = { version = ">=0.8.0, <0.23.0", optional = false, features = ["bundled"] }
+diesel = { version = "2.1.0", features = ["sqlite"] }
+diesel_migrations = "2.1.0"
 dotenv = "0.10"
 unicode-width = "0.1"
