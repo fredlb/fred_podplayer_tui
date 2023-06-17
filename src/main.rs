@@ -35,7 +35,6 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::sync::Mutex;
-use tui::layout::Alignment;
 use tui::widgets::Wrap;
 use tui::{
     backend::{Backend, CrosstermBackend},
@@ -181,7 +180,7 @@ async fn run_app<B: Backend>(
                 InputMode::Help => match event {
                     Event::Key(KeyEvent {
                         modifiers: KeyModifiers::NONE,
-                        code: KeyCode::Char(q),
+                        code: KeyCode::Char('q'),
                     }) => app.input_mode = InputMode::Normal,
                     _ => {}
                 },
@@ -382,8 +381,8 @@ fn render_input<B: Backend>(f: &mut Frame<B>, app: &App, size: Rect) {
     f.render_widget(input2, input_chunks[1]);
 }
 
-fn render_help<B: Backend>(f: &mut Frame<B>, app: &App, size: Rect) {
-    let area2 = centered_rect(50, 50, size);
+fn render_help<B: Backend>(f: &mut Frame<B>, size: Rect) {
+    let area = centered_rect(50, 50, size);
     let text = vec![
         Spans::from(Span::from("J/K to navigate up and down")),
         Spans::from(Span::from("Q to navigate back or quit")),
@@ -397,8 +396,8 @@ fn render_help<B: Backend>(f: &mut Frame<B>, app: &App, size: Rect) {
         .block(Block::default().title("Help").borders(Borders::ALL))
         .style(Style::default().fg(Color::White))
         .wrap(Wrap { trim: true });
-    f.render_widget(Clear, area2);
-    f.render_widget(para, area2);
+    f.render_widget(Clear, area);
+    f.render_widget(para, area);
 }
 
 fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
@@ -425,7 +424,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         render_input(f, app, size);
     }
     if let InputMode::Help = app.input_mode {
-        render_help(f, app, size);
+        render_help(f, size);
     }
 }
 
