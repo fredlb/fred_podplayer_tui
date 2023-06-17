@@ -64,6 +64,7 @@ pub enum NavigationStack {
 pub enum InputMode {
     Normal,
     Editing,
+    Help,
 }
 
 pub enum InputField {
@@ -233,5 +234,9 @@ impl App {
         self.input_mode = InputMode::Normal;
         self.input_pod_name = String::from("");
         self.input_pod_url = String::from("");
+    }
+
+    pub fn show_help(&mut self) {
+        self.input_mode = InputMode::Help;
     }
 }

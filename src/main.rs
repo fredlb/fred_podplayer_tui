@@ -27,12 +27,13 @@ use network::{IoEvent, Network};
 use crate::app::StatefulList;
 use crate::db::models::Pod;
 use db::models::Episode;
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use std::error::Error;
 use std::{
     io,
     sync::Arc,
     time::{Duration, Instant},
 };
-use std::error::Error;
 use tokio::sync::Mutex;
 use tui::{
     backend::{Backend, CrosstermBackend},
@@ -42,11 +43,11 @@ use tui::{
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
     Frame, Terminal,
 };
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
-fn run_migrations(connection: &mut impl MigrationHarness<diesel::sqlite::Sqlite>) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-
+fn run_migrations(
+    connection: &mut impl MigrationHarness<diesel::sqlite::Sqlite>,
+) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     // This will run the necessary migrations.
     //
     // See the documentation for `MigrationHarness` for
@@ -166,8 +167,19 @@ async fn run_app<B: Backend>(
                     }) => app.player.jump_backward_10s(),
                     Event::Key(KeyEvent {
                         modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Char('?'),
+                    }) => app.input_mode = InputMode::Help,
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
                         code: KeyCode::Char('n'),
                     }) => app.input_mode = InputMode::Editing,
+                    _ => {}
+                },
+                InputMode::Help => match event {
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Esc,
+                    }) => app.input_mode = InputMode::Normal,
                     _ => {}
                 },
                 InputMode::Editing => match event {
@@ -364,6 +376,20 @@ fn render_input<B: Backend>(f: &mut Frame<B>, app: &App, size: Rect) {
     f.render_widget(input2, input_chunks[1]);
 }
 
+fn render_help<B: Backend>(f: &mut Frame<B>, app: &App, size: Rect) {
+    let area = centered_rect(80, 25, size);
+    let area2 = centered_rect(50, 85, size);
+    let input_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .split(area);
+    f.render_widget(Clear, area2);
+    f.render_widget(
+        Block::default().title("Help").borders(Borders::ALL),
+        area2,
+    );
+}
+
 fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let size = f.size();
     let main_chunks = Layout::default()
@@ -386,6 +412,9 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 
     if let InputMode::Editing = app.input_mode {
         render_input(f, app, size);
+    }
+    if let InputMode::Help = app.input_mode {
+        render_help(f, app, size);
     }
 }
 
