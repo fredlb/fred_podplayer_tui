@@ -43,6 +43,9 @@ use tui::{
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
     Frame, Terminal,
 };
+use tui::layout::Alignment;
+use tui::widgets::Wrap;
+
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
 fn run_migrations(
@@ -377,15 +380,23 @@ fn render_input<B: Backend>(f: &mut Frame<B>, app: &App, size: Rect) {
 }
 
 fn render_help<B: Backend>(f: &mut Frame<B>, app: &App, size: Rect) {
-    let area = centered_rect(80, 25, size);
-    let area2 = centered_rect(50, 85, size);
-    let input_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-        .split(area);
+    let area2 = centered_rect(50, 50, size);
+    let text = vec![
+        Spans::from(Span::from("J/K to navigate up and down")),
+        Spans::from(Span::from("Q to navigate back or quit")),
+        Spans::from(Span::from("N to create a new pod")),
+        Spans::from(Span::from("Space to toggle play/pause")),
+        Spans::from(Span::from("R to refresh a podcasts feed/episodes")),
+        Spans::from(Span::from("O to seek 100s ahead")),
+        Spans::from(Span::from("I to seek 10s back")),
+    ];
+    let para = Paragraph::new(text)
+        .block(Block::default().title("Help").borders(Borders::ALL))
+        .style(Style::default().fg(Color::White))
+        .wrap(Wrap { trim: true });
     f.render_widget(Clear, area2);
     f.render_widget(
-        Block::default().title("Help").borders(Borders::ALL),
+        para,
         area2,
     );
 }
