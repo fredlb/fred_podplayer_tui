@@ -1,6 +1,7 @@
 Basic podcast player with a terminal interface. Downloaded episodes are stored in subdir `data`.
 Build to a standalone binary.
 
+* H to display help
 * J/K to navigate up and down
 * Q to navigate back or quit
 * N to create a new pod
