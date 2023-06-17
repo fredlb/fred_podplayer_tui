@@ -178,6 +178,7 @@ impl App {
         }
     }
 
+    // TODO: Fix if episode is marked as download but audio file is missing
     pub fn handle_enter_episode(&mut self) {
         if let Some(data) = self.episodes.clone() {
             if let Some(index) = data.state.selected() {

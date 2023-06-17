@@ -4,14 +4,10 @@ pub mod models;
 pub mod schema;
 
 use diesel::prelude::*;
-use dotenv::dotenv;
-use std::env;
 
 use models::{Episode, NewEpisode, NewPod, Pod};
 
 pub fn establish_connection() -> SqliteConnection {
-    dotenv().ok();
-
     let database_url = "poddb.db";
     SqliteConnection::establish(&database_url).unwrap_or_else(|_| panic!("failed to connect to db"))
 }
