@@ -12,7 +12,7 @@ use models::{Episode, NewEpisode, NewPod, Pod};
 pub fn establish_connection() -> SqliteConnection {
     dotenv().ok();
 
-    let database_url = env::var("DATABASE_URL").expect("database url not set");
+    let database_url = "poddb.db";
     SqliteConnection::establish(&database_url).unwrap_or_else(|_| panic!("failed to connect to db"))
 }
 
