@@ -1,4 +1,6 @@
-table! {
+// @generated automatically by Diesel CLI.
+
+diesel::table! {
     episodes (id) {
         id -> Integer,
         uid -> Text,
@@ -16,7 +18,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     pods (id) {
         id -> Integer,
         title -> Text,
@@ -25,4 +27,7 @@ table! {
     }
 }
 
-allow_tables_to_appear_in_same_query!(episodes, pods,);
+diesel::allow_tables_to_appear_in_same_query!(
+    episodes,
+    pods,
+);

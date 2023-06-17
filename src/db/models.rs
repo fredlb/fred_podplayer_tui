@@ -1,7 +1,8 @@
-use super::schema::{episodes, pods};
+use diesel::prelude::*;
 
 #[derive(Identifiable, Queryable, PartialEq, Debug, Clone)]
-#[table_name = "pods"]
+#[diesel(table_name = crate::db::schema::pods)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct Pod {
     pub id: i32,
     pub title: String,
@@ -10,15 +11,17 @@ pub struct Pod {
 }
 
 #[derive(Insertable)]
-#[table_name = "pods"]
+#[diesel(table_name = crate::db::schema::pods)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct NewPod<'a> {
     pub title: &'a str,
     pub url: &'a str,
 }
 
 #[derive(Clone, Queryable, Identifiable, Associations, PartialEq, Debug)]
-#[belongs_to(Pod)]
-#[table_name = "episodes"]
+#[diesel(belongs_to(Pod))]
+#[diesel(table_name = crate::db::schema::episodes)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct Episode {
     pub id: i32,
     pub uid: String,
@@ -36,7 +39,8 @@ pub struct Episode {
 }
 
 #[derive(Insertable)]
-#[table_name = "episodes"]
+#[diesel(table_name = crate::db::schema::episodes)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct NewEpisode<'a> {
     pub uid: &'a str,
     pub pod_id: i32,
