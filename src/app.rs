@@ -8,6 +8,7 @@ use crate::db::{
 };
 use crate::{network::IoEvent, player::Player};
 use kira::sound::PlaybackState;
+use std::fs;
 use tui::widgets::ListState;
 
 use std::sync::mpsc::Sender;
@@ -122,6 +123,7 @@ impl App {
         self.episodes = Some(StatefulList::with_items(eps));
     }
 
+    // TODO: Set a state for when pod is updating
     pub fn refresh_pod(&mut self) {
         if let Some(index) = self.pods.state.selected() {
             return self.dispatch(IoEvent::GetPodUpdates(self.pods.items[index].clone()));
@@ -178,7 +180,6 @@ impl App {
         }
     }
 
-    // TODO: Fix if episode is marked as download but audio file is missing
     pub fn handle_enter_episode(&mut self) {
         if let Some(data) = self.episodes.clone() {
             if let Some(index) = data.state.selected() {
@@ -188,7 +189,17 @@ impl App {
                 let updated_ep = get_episode(&mut conn, ep.id);
                 if !updated_ep.downloaded {
                     self.is_downloading = true;
-                    return self.dispatch(IoEvent::DownloadEpisodeAudio(data.items[index].clone()));
+                    return self.dispatch(IoEvent::DownloadEpisodeAudio(
+                        data.items[index].clone(),
+                        0.0,
+                    ));
+                }
+                if let Err(_metadata) = fs::metadata(&updated_ep.audio_filepath.as_ref().unwrap()) {
+                    self.is_downloading = true;
+                    return self.dispatch(IoEvent::DownloadEpisodeAudio(
+                        data.items[index].clone(),
+                        updated_ep.timestamp,
+                    ));
                 }
                 self.player.selected_track = Some(updated_ep.clone());
                 self.player.play();
@@ -197,9 +208,10 @@ impl App {
         }
     }
 
-    pub fn play_episode(&mut self, episode: Episode) {
+    pub fn play_episode(&mut self, episode: Episode, timestamp: f32) {
         self.player.selected_track = Some(episode.clone());
         self.player.play();
+        self.player.seek(timestamp);
         if let Some(data) = &mut self.episodes {
             let index = data.items.iter().position(|x| x.id == episode.id);
             if let Some(i) = index {

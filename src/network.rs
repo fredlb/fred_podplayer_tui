@@ -31,7 +31,7 @@ error_chain! {
 pub enum IoEvent {
     GetPodEpisodes(Pod),
     GetPodUpdates(Pod),
-    DownloadEpisodeAudio(Episode),
+    DownloadEpisodeAudio(Episode, f32),
 }
 
 pub struct Network<'a> {
@@ -51,8 +51,8 @@ impl<'a> Network<'a> {
             IoEvent::GetPodUpdates(pod) => {
                 self.download_pod_updates(pod).await;
             }
-            IoEvent::DownloadEpisodeAudio(episode) => {
-                let _ = self.download_episode_audio(episode).await;
+            IoEvent::DownloadEpisodeAudio(episode, timestamp) => {
+                let _ = self.download_episode_audio(episode, timestamp).await;
             }
         }
         let mut app = self.app.lock().await;
@@ -64,7 +64,7 @@ impl<'a> Network<'a> {
         let client = reqwest::Client::new();
         let res = client
             .get(&pod.url)
-            .header(USER_AGENT, "Mah podplayah")
+            .header(USER_AGENT, "fred_podplayer_tui")
             .send()
             .await;
         match res {
@@ -110,7 +110,7 @@ impl<'a> Network<'a> {
         let client = reqwest::Client::new();
         let res = client
             .get(&pod.url)
-            .header(USER_AGENT, "Mah podplayah")
+            .header(USER_AGENT, "fred_podplayer_tui")
             .send()
             .await;
         match res {
@@ -149,7 +149,7 @@ impl<'a> Network<'a> {
         }
     }
 
-    async fn download_episode_audio(&mut self, episode: Episode) -> Result<()> {
+    async fn download_episode_audio(&mut self, episode: Episode, timestamp: f32) -> Result<()> {
         let result = reqwest::get(&episode.audio_url).await?;
         let filename;
         create_dir_all("./data")?;
@@ -168,9 +168,10 @@ impl<'a> Network<'a> {
         dest.write_all(&content)?;
         let duration = self.read_metadata_from_file(&filename);
         let mut conn = establish_connection();
-        let updated_ep = mark_episode_as_downloaded(&mut conn, &episode, &filename, duration as i32);
+        let updated_ep =
+            mark_episode_as_downloaded(&mut conn, &episode, &filename, duration as i32);
         let mut app = self.app.lock().await;
-        app.play_episode(updated_ep);
+        app.play_episode(updated_ep, timestamp);
         Ok(())
     }
 
