@@ -152,6 +152,7 @@ impl<'a> Network<'a> {
     async fn download_episode_audio(&mut self, episode: Episode) -> Result<()> {
         let result = reqwest::get(&episode.audio_url).await?;
         let filename;
+        create_dir_all("./data")?;
         let mut dest = {
             let fname = result
                 .url()
@@ -164,7 +165,6 @@ impl<'a> Network<'a> {
             File::create(fname)?
         };
         let content = result.bytes().await?;
-        create_dir_all("./data")?;
         dest.write_all(&content)?;
         let duration = self.read_metadata_from_file(&filename);
         let mut conn = establish_connection();
