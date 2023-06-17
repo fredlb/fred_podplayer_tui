@@ -78,6 +78,7 @@ pub struct App {
     io_tx: Option<Sender<IoEvent>>,
     pub is_loading: bool,
     pub is_downloading: bool,
+    pub is_refreshing: bool,
     pub navigation_stack: NavigationStack,
     pub player: Player,
     pub active_pod_id: i32,
@@ -96,6 +97,7 @@ impl App {
             io_tx: Some(io_tx),
             is_loading: false,
             is_downloading: false,
+            is_refreshing: false,
             navigation_stack: NavigationStack::Main,
             player,
             active_pod_id: 0,
@@ -124,9 +126,9 @@ impl App {
         self.episodes = Some(StatefulList::with_items(eps));
     }
 
-    // TODO: Set a state for when pod is updating
     pub fn refresh_pod(&mut self) {
         if let Some(index) = self.pods.state.selected() {
+            self.is_refreshing = true;
             return self.dispatch(IoEvent::GetPodUpdates(self.pods.items[index].clone()));
         }
     }
@@ -234,9 +236,5 @@ impl App {
         self.input_mode = InputMode::Normal;
         self.input_pod_name = String::from("");
         self.input_pod_url = String::from("");
-    }
-
-    pub fn show_help(&mut self) {
-        self.input_mode = InputMode::Help;
     }
 }

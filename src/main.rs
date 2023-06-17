@@ -35,6 +35,8 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::sync::Mutex;
+use tui::layout::Alignment;
+use tui::widgets::Wrap;
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout, Rect},
@@ -43,8 +45,6 @@ use tui::{
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
     Frame, Terminal,
 };
-use tui::layout::Alignment;
-use tui::widgets::Wrap;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
@@ -181,7 +181,7 @@ async fn run_app<B: Backend>(
                 InputMode::Help => match event {
                     Event::Key(KeyEvent {
                         modifiers: KeyModifiers::NONE,
-                        code: KeyCode::Esc,
+                        code: KeyCode::Char(q),
                     }) => app.input_mode = InputMode::Normal,
                     _ => {}
                 },
@@ -322,6 +322,9 @@ fn render_player<B: Backend>(f: &mut Frame<B>, app: &mut App, main_chunks: &[Rec
     if app.is_downloading {
         player_spans.push(Spans::from(Span::from("Episode is downloading...")));
     }
+    if app.is_refreshing {
+        player_spans.push(Spans::from(Span::from("Checking and fetching new episodes...")));
+    }
     let player = Paragraph::new(player_spans)
         .block(Block::default().title(player_title).borders(Borders::ALL))
         .style(Style::default().fg(Color::White));
@@ -395,10 +398,7 @@ fn render_help<B: Backend>(f: &mut Frame<B>, app: &App, size: Rect) {
         .style(Style::default().fg(Color::White))
         .wrap(Wrap { trim: true });
     f.render_widget(Clear, area2);
-    f.render_widget(
-        para,
-        area2,
-    );
+    f.render_widget(para, area2);
 }
 
 fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {

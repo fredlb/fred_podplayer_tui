@@ -142,6 +142,7 @@ impl<'a> Network<'a> {
                     }
                     let mut app = self.app.lock().await;
                     app.set_active_pod(pod.id);
+                    app.is_refreshing = false;
                 }
                 Err(_e) => {}
             },
