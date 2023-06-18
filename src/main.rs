@@ -175,6 +175,10 @@ async fn run_app<B: Backend>(
                         modifiers: KeyModifiers::NONE,
                         code: KeyCode::Char('n'),
                     }) => app.input_mode = InputMode::Editing,
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Char('d'),
+                    }) => app.toggle_description(),
                     _ => {}
                 },
                 InputMode::Help => match event {
@@ -312,19 +316,19 @@ fn render_episodes<B: Backend>(
         let selected_ep = episodes.items.get(selected_index).unwrap();
         if show_description {
             let area = centered_rect(50, 50, size);
-            let text = vec![
-                Spans::from(Span::from(selected_ep.description.clone())),
-            ];
+            let text = vec![Spans::from(Span::from(selected_ep.description.clone()))];
             let para = Paragraph::new(text)
-                .block(Block::default().title("Episode description").borders(Borders::ALL))
+                .block(
+                    Block::default()
+                        .title("Episode description")
+                        .borders(Borders::ALL),
+                )
                 .style(Style::default().fg(Color::White))
                 .wrap(Wrap { trim: true });
             f.render_widget(Clear, area);
             f.render_widget(para, area);
         }
     }
-
-
 }
 
 fn render_player<B: Backend>(f: &mut Frame<B>, app: &mut App, main_chunks: &[Rect]) {
@@ -342,7 +346,9 @@ fn render_player<B: Backend>(f: &mut Frame<B>, app: &mut App, main_chunks: &[Rec
         player_spans.push(Spans::from(Span::from("Episode is downloading...")));
     }
     if app.is_refreshing {
-        player_spans.push(Spans::from(Span::from("Checking and fetching new episodes...")));
+        player_spans.push(Spans::from(Span::from(
+            "Checking and fetching new episodes...",
+        )));
     }
     let player = Paragraph::new(player_spans)
         .block(Block::default().title(player_title).borders(Borders::ALL))
@@ -411,6 +417,7 @@ fn render_help<B: Backend>(f: &mut Frame<B>, size: Rect) {
         Spans::from(Span::from("R to refresh a podcasts feed/episodes")),
         Spans::from(Span::from("O to seek 100s ahead")),
         Spans::from(Span::from("I to seek 10s back")),
+        Spans::from(Span::from("D to view episode description")),
     ];
     let para = Paragraph::new(text)
         .block(Block::default().title("Help").borders(Borders::ALL))

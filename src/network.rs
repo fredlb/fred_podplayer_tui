@@ -14,6 +14,7 @@ use std::fs::{create_dir_all, File};
 use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
+use html2text::from_read;
 use tokio::sync::Mutex;
 
 use symphonia::core::formats::FormatOptions;
@@ -77,6 +78,7 @@ impl<'a> Network<'a> {
                             for item in chan.items().iter() {
                                 let dt = item.pub_date().unwrap();
                                 let dt2 = DateTime::parse_from_rfc2822(dt).unwrap();
+                                let item_description = from_read(item.description().unwrap().as_bytes(), 80);
                                 create_episode(
                                     &mut conn,
                                     item.guid().unwrap().value(),
@@ -84,7 +86,7 @@ impl<'a> Network<'a> {
                                     item.title().unwrap(),
                                     item.link().unwrap_or(""),
                                     item.enclosure().unwrap().url(),
-                                    "",
+                                    item_description.as_str(),
                                     dt2.timestamp() as i32,
                                     false,
                                 );
@@ -124,6 +126,7 @@ impl<'a> Network<'a> {
                                 if !uids.contains(&item.guid().unwrap().value().to_string()) {
                                     let dt = item.pub_date().unwrap();
                                     let dt2 = DateTime::parse_from_rfc2822(dt).unwrap();
+                                    let item_description = from_read(item.description().unwrap().as_bytes(), 80);
                                     create_episode(
                                         &mut conn,
                                         item.guid().unwrap().value(),
@@ -131,7 +134,7 @@ impl<'a> Network<'a> {
                                         item.title().unwrap(),
                                         item.link().unwrap_or(""),
                                         item.enclosure().unwrap().url(),
-                                        "",
+                                        item_description.as_str(),
                                         dt2.timestamp() as i32,
                                         false,
                                     );

@@ -225,6 +225,10 @@ impl App {
         }
     }
 
+    pub fn toggle_description(&mut self) {
+        self.show_description = !self.show_description;
+    }
+
     pub fn create_pod(&mut self) {
         //TODO: Validate input
         //1. Validate input

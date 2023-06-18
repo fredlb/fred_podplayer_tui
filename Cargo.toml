@@ -22,3 +22,4 @@ diesel = { version = "2.1.0", features = ["sqlite"] }
 diesel_migrations = "2.1.0"
 dotenv = "0.10"
 unicode-width = "0.1"
+html2text = "0.6.0"
