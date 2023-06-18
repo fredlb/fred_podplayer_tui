@@ -267,6 +267,8 @@ fn render_pods<B: Backend>(f: &mut Frame<B>, pods: &StatefulList<Pod>, main_chun
 fn render_episodes<B: Backend>(
     f: &mut Frame<B>,
     episodes: &StatefulList<Episode>,
+    show_description: bool,
+    size: Rect,
     main_chunks: &[Rect],
 ) {
     let mut episodes_items = Vec::<ListItem>::new();
@@ -305,6 +307,24 @@ fn render_episodes<B: Backend>(
         .highlight_symbol(">> ");
 
     f.render_stateful_widget(episodes_list, main_chunks[0], &mut episodes.state.clone());
+
+    if let Some(selected_index) = episodes.state.selected() {
+        let selected_ep = episodes.items.get(selected_index).unwrap();
+        if show_description {
+            let area = centered_rect(50, 50, size);
+            let text = vec![
+                Spans::from(Span::from(selected_ep.description.clone())),
+            ];
+            let para = Paragraph::new(text)
+                .block(Block::default().title("Episode description").borders(Borders::ALL))
+                .style(Style::default().fg(Color::White))
+                .wrap(Wrap { trim: true });
+            f.render_widget(Clear, area);
+            f.render_widget(para, area);
+        }
+    }
+
+
 }
 
 fn render_player<B: Backend>(f: &mut Frame<B>, app: &mut App, main_chunks: &[Rect]) {
@@ -413,7 +433,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         }
         NavigationStack::Episodes => {
             if let Some(episodes) = &app.episodes {
-                render_episodes(f, episodes, &main_chunks);
+                render_episodes(f, episodes, app.show_description, size, &main_chunks);
             }
         }
     }
