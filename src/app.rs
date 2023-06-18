@@ -2,10 +2,7 @@ extern crate rss;
 extern crate tui;
 
 use crate::db::models::{Episode, Pod};
-use crate::db::{
-    create_pod, establish_connection, get_episode, get_episodes_for_pod, get_pod, get_pods,
-    set_timestamp_on_episode,
-};
+use crate::db::{create_pod, delete_pod, establish_connection, get_episode, get_episodes_for_pod, get_pod, get_pods, set_timestamp_on_episode};
 use crate::{network::IoEvent, player::Player};
 use kira::sound::PlaybackState;
 use std::fs;
@@ -126,6 +123,17 @@ impl App {
         let mut conn = establish_connection();
         let eps = get_episodes_for_pod(&mut conn, id);
         self.episodes = Some(StatefulList::with_items(eps));
+    }
+
+    // TODO: Cleanup audio files on disk
+    pub fn delete_pod_and_episodes(&mut self) {
+        if let Some(index) = self.pods.state.selected() {
+            let pod = &self.pods.items[index];
+            let mut conn = establish_connection();
+            delete_pod(&mut conn, pod.id);
+            let pods = get_pods(&mut conn);
+            self.pods = StatefulList::with_items(pods);
+        }
     }
 
     pub fn refresh_pod(&mut self) {

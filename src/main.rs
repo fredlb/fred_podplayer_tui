@@ -179,6 +179,10 @@ async fn run_app<B: Backend>(
                         modifiers: KeyModifiers::NONE,
                         code: KeyCode::Char('d'),
                     }) => app.toggle_description(),
+                    Event::Key(KeyEvent {
+                        modifiers: KeyModifiers::NONE,
+                        code: KeyCode::Char('x'),
+                    }) => app.delete_pod_and_episodes(),
                     _ => {}
                 },
                 InputMode::Help => match event {
@@ -418,6 +422,7 @@ fn render_help<B: Backend>(f: &mut Frame<B>, size: Rect) {
         Spans::from(Span::from("O to seek 100s ahead")),
         Spans::from(Span::from("I to seek 10s back")),
         Spans::from(Span::from("D to view episode description")),
+        Spans::from(Span::from("X to delete pod and episodes")),
     ];
     let para = Paragraph::new(text)
         .block(Block::default().title("Help").borders(Borders::ALL))

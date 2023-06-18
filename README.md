@@ -11,4 +11,5 @@ Build to a standalone binary.
 * R to refresh a podcasts feed/episodes
 * O to seek 100s ahead
 * I to seek 10s back
+* X to delete pod and episodes
 

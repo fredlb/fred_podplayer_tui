@@ -129,3 +129,10 @@ pub fn set_timestamp_on_episode(conn: &mut SqliteConnection, episode_id: i32, ts
         .first(conn)
         .unwrap_or_else(|_| panic!("aaaaa"));
 }
+
+pub fn delete_pod(conn: &mut SqliteConnection, pod_id_to_delete: i32) {
+    use schema::episodes::dsl::*;
+    use schema::pods::dsl::*;
+    let _ = diesel::delete(episodes.filter(pod_id.eq(pod_id_to_delete))).execute(conn);
+    let _ = diesel::delete(pods.find(pod_id_to_delete)).execute(conn);
+}
