@@ -9,4 +9,4 @@ Build to a standalone binary.
 * R to refresh a podcasts feed/episodes
 * O to seek 100s ahead
 * I to seek 10s back
-![fred_podplayer_tui](https://github.com/fredlb/fred_podplayer_tui/blob/main/screenshots/playing.png?raw=true)
+![fred_podplayer_tui](https://github.com/fredlb/fred_podplayer_tui/blob/main/screenshots/podplayer.gif?raw=true)
